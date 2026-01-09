@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "description": "CleanFinding Secure Browser - Privacy-focused, family-safe web browser",
   "main": "main.js",
-  "author": "CleanFinding",
+  "author": {
+    "name": "CleanFinding",
+    "email": "support@cleanfinding.com"
+  },
   "license": "MIT",
   "homepage": "https://cleanfinding.com",
   "scripts": {
