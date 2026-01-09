@@ -1,0 +1,164 @@
+name: Build and Release CleanFinding Browser
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Windows
+        run: npm run build:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: dist/*.exe
+          retention-days: 5
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build macOS
+        run: npm run build:mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build
+          path: |
+            dist/*.dmg
+            dist/*.zip
+          retention-days: 5
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Linux
+        run: npm run build:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: |
+            dist/*.AppImage
+            dist/*.deb
+          retention-days: 5
+
+  create-release:
+    needs: [build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Display structure of downloaded files
+        run: ls -R dist
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.VERSION }}
+          name: CleanFinding Browser v${{ steps.version.outputs.VERSION }}
+          body: |
+            ## CleanFinding Browser v${{ steps.version.outputs.VERSION }}
+
+            A privacy-focused, family-safe web browser.
+
+            ### Features
+            - ✅ SafeSearch always enabled (cannot be disabled)
+            - 🛡️ Built-in tracker blocking (25+ trackers)
+            - 🚫 Ad blocking
+            - 👨‍👩‍👧‍👦 Family-safe content filtering
+            - 🔒 Privacy-focused - no data collection
+
+            ### Downloads
+            - **Windows**: `CleanFinding-Browser-Setup-${{ steps.version.outputs.VERSION }}.exe`
+            - **macOS**: `CleanFinding-Browser-${{ steps.version.outputs.VERSION }}.dmg`
+            - **Linux**: `CleanFinding-Browser-${{ steps.version.outputs.VERSION }}.AppImage`
+
+            ### Installation
+            - **Windows**: Run the .exe installer
+            - **macOS**: Open .dmg and drag to Applications
+            - **Linux**: Make .AppImage executable and run
+
+            ---
+            Visit [CleanFinding.com](https://cleanfinding.com) for more information.
+          draft: false
+          prerelease: false
+          files: |
+            dist/windows-build/*.exe
+            dist/macos-build/*.dmg
+            dist/macos-build/*.zip
+            dist/linux-build/*.AppImage
+            dist/linux-build/*.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
