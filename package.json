@@ -16,9 +16,7 @@
     "pack": "electron-builder --dir"
   },
   "dependencies": {
-    "@aspect-dev/electron-adblocker": "^1.0.0",
-    "electron-store": "^8.1.0",
-    "electron-updater": "^6.1.7"
+    "electron-store": "^8.1.0"
   },
   "devDependencies": {
     "electron": "^28.1.0",
@@ -40,33 +38,22 @@
       "assets/**/*"
     ],
     "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": ["x64", "ia32"]
-        }
-      ],
-      "icon": "build/icon.ico",
+      "target": "nsis",
       "publisherName": "CleanFinding"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico",
-      "installerHeaderIcon": "build/icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "CleanFinding Browser"
     },
     "mac": {
       "target": ["dmg", "zip"],
-      "icon": "build/icon.icns",
       "category": "public.app-category.utilities"
     },
     "linux": {
       "target": ["AppImage", "deb"],
-      "icon": "build/icons",
       "category": "Network"
     }
   }
