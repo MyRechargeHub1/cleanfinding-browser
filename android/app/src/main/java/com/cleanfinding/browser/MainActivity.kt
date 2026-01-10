@@ -6,12 +6,15 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.view.KeyEvent
+import android.view.LayoutInflater
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.webkit.*
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 class MainActivity : AppCompatActivity() {
@@ -22,8 +25,27 @@ class MainActivity : AppCompatActivity() {
     private lateinit var swipeRefresh: SwipeRefreshLayout
     private lateinit var backButton: ImageButton
     private lateinit var forwardButton: ImageButton
-    private lateinit var refreshButton: ImageButton
     private lateinit var homeButton: ImageButton
+    private lateinit var menuButton: ImageButton
+    private lateinit var tabsButton: FrameLayout
+    private lateinit var tabCountText: TextView
+    private lateinit var newTabButton: ImageButton
+    private lateinit var tabContainer: LinearLayout
+    private lateinit var findBar: LinearLayout
+    private lateinit var findEditText: EditText
+    private lateinit var findResultsText: TextView
+    private lateinit var findPrevButton: ImageButton
+    private lateinit var findNextButton: ImageButton
+    private lateinit var findCloseButton: ImageButton
+
+    private lateinit var bookmarkManager: BookmarkManager
+
+    // Tab management
+    private val tabs = mutableListOf<Tab>()
+    private var activeTabIndex = 0
+    private val tabWebViews = mutableMapOf<Long, WebView>()
+
+    private var desktopMode = false
 
     // Tracker domains to block
     private val blockedDomains = listOf(
@@ -57,17 +79,13 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        bookmarkManager = BookmarkManager(this)
+
         initViews()
-        setupWebView()
         setupListeners()
 
-        // Load home page or intent URL
-        val intentUrl = intent?.data?.toString()
-        if (intentUrl != null) {
-            loadUrl(intentUrl)
-        } else {
-            loadUrl(homeUrl)
-        }
+        // Create initial tab
+        createNewTab(intent?.data?.toString() ?: homeUrl)
     }
 
     private fun initViews() {
@@ -77,13 +95,23 @@ class MainActivity : AppCompatActivity() {
         swipeRefresh = findViewById(R.id.swipeRefresh)
         backButton = findViewById(R.id.backButton)
         forwardButton = findViewById(R.id.forwardButton)
-        refreshButton = findViewById(R.id.refreshButton)
         homeButton = findViewById(R.id.homeButton)
+        menuButton = findViewById(R.id.menuButton)
+        tabsButton = findViewById(R.id.tabsButton)
+        tabCountText = findViewById(R.id.tabCountText)
+        newTabButton = findViewById(R.id.newTabButton)
+        tabContainer = findViewById(R.id.tabContainer)
+        findBar = findViewById(R.id.findBar)
+        findEditText = findViewById(R.id.findEditText)
+        findResultsText = findViewById(R.id.findResultsText)
+        findPrevButton = findViewById(R.id.findPrevButton)
+        findNextButton = findViewById(R.id.findNextButton)
+        findCloseButton = findViewById(R.id.findCloseButton)
     }
 
     @SuppressLint("SetJavaScriptEnabled")
-    private fun setupWebView() {
-        webView.settings.apply {
+    private fun setupWebView(wv: WebView) {
+        wv.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
             databaseEnabled = true
@@ -97,21 +125,22 @@ class MainActivity : AppCompatActivity() {
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             safeBrowsingEnabled = true
 
-            // Set user agent
-            userAgentString = userAgentString.replace("; wv", "") + " CleanFindingBrowser/1.0"
+            userAgentString = if (desktopMode) {
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 CleanFindingBrowser/1.0"
+            } else {
+                userAgentString.replace("; wv", "") + " CleanFindingBrowser/1.0"
+            }
         }
 
-        webView.webViewClient = object : WebViewClient() {
+        wv.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url?.toString() ?: return false
 
-                // Check for blocked domains
                 if (isBlockedUrl(url)) {
                     showBlockedMessage(url)
                     return true
                 }
 
-                // Enforce SafeSearch
                 val safeUrl = enforceSafeSearch(url)
                 if (safeUrl != url) {
                     view?.loadUrl(safeUrl)
@@ -123,38 +152,48 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
-                progressBar.visibility = View.VISIBLE
-                urlEditText.setText(url)
-                updateNavigationButtons()
+                if (view == webView) {
+                    progressBar.visibility = View.VISIBLE
+                    urlEditText.setText(url)
+                    updateNavigationButtons()
+                    updateCurrentTabUrl(url ?: homeUrl)
+                }
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                progressBar.visibility = View.GONE
-                swipeRefresh.isRefreshing = false
-                updateNavigationButtons()
-
-                // Inject content blocking script
-                injectBlockingScript()
+                if (view == webView) {
+                    progressBar.visibility = View.GONE
+                    swipeRefresh.isRefreshing = false
+                    updateNavigationButtons()
+                    injectBlockingScript(view)
+                }
             }
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 super.onReceivedError(view, request, error)
-                progressBar.visibility = View.GONE
-                swipeRefresh.isRefreshing = false
+                if (view == webView) {
+                    progressBar.visibility = View.GONE
+                    swipeRefresh.isRefreshing = false
+                }
             }
         }
 
-        webView.webChromeClient = object : WebChromeClient() {
+        wv.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                progressBar.progress = newProgress
-                if (newProgress == 100) {
-                    progressBar.visibility = View.GONE
+                if (view == webView) {
+                    progressBar.progress = newProgress
+                    if (newProgress == 100) {
+                        progressBar.visibility = View.GONE
+                    }
                 }
             }
 
             override fun onReceivedTitle(view: WebView?, title: String?) {
                 super.onReceivedTitle(view, title)
+                if (view == webView && title != null) {
+                    updateCurrentTabTitle(title)
+                }
             }
         }
     }
@@ -186,49 +225,333 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        refreshButton.setOnClickListener {
-            webView.reload()
-        }
-
         homeButton.setOnClickListener {
             loadUrl(homeUrl)
         }
+
+        menuButton.setOnClickListener {
+            showMenu()
+        }
+
+        tabsButton.setOnClickListener {
+            toggleTabBar()
+        }
+
+        newTabButton.setOnClickListener {
+            createNewTab(homeUrl)
+        }
+
+        // Find in page listeners
+        findEditText.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                performFind()
+                true
+            } else {
+                false
+            }
+        }
+
+        findPrevButton.setOnClickListener {
+            webView.findNext(false)
+        }
+
+        findNextButton.setOnClickListener {
+            webView.findNext(true)
+        }
+
+        findCloseButton.setOnClickListener {
+            closeFindBar()
+        }
+
+        webView.setFindListener { activeMatchOrdinal, numberOfMatches, isDoneCounting ->
+            if (isDoneCounting) {
+                findResultsText.text = if (numberOfMatches > 0) {
+                    "${activeMatchOrdinal + 1}/$numberOfMatches"
+                } else {
+                    "0/0"
+                }
+            }
+        }
+    }
+
+    // Tab Management
+    private fun createNewTab(url: String) {
+        val tab = Tab(url = url, title = "New Tab")
+        tabs.add(tab)
+
+        val newWebView = WebView(this)
+        setupWebView(newWebView)
+        tabWebViews[tab.id] = newWebView
+
+        switchToTab(tabs.size - 1)
+        loadUrl(url)
+        updateTabBar()
+    }
+
+    private fun switchToTab(index: Int) {
+        if (index < 0 || index >= tabs.size) return
+
+        // Save current webview state
+        if (tabs.isNotEmpty() && activeTabIndex < tabs.size) {
+            tabs[activeTabIndex].isActive = false
+        }
+
+        activeTabIndex = index
+        tabs[activeTabIndex].isActive = true
+
+        // Switch webview
+        val tab = tabs[activeTabIndex]
+        val tabWebView = tabWebViews[tab.id]
+
+        if (tabWebView != null) {
+            swipeRefresh.removeAllViews()
+            swipeRefresh.addView(tabWebView)
+            webView = tabWebView
+            urlEditText.setText(tab.url)
+            updateNavigationButtons()
+        }
+
+        updateTabBar()
+        updateTabCount()
+    }
+
+    private fun closeTab(index: Int) {
+        if (tabs.size <= 1) {
+            // Don't close last tab, just go home
+            loadUrl(homeUrl)
+            return
+        }
+
+        val tab = tabs[index]
+        tabWebViews[tab.id]?.destroy()
+        tabWebViews.remove(tab.id)
+        tabs.removeAt(index)
+
+        if (activeTabIndex >= tabs.size) {
+            activeTabIndex = tabs.size - 1
+        } else if (index < activeTabIndex) {
+            activeTabIndex--
+        }
+
+        switchToTab(activeTabIndex)
+    }
+
+    private fun updateCurrentTabUrl(url: String) {
+        if (activeTabIndex < tabs.size) {
+            tabs[activeTabIndex].url = url
+        }
+    }
+
+    private fun updateCurrentTabTitle(title: String) {
+        if (activeTabIndex < tabs.size) {
+            tabs[activeTabIndex].title = title
+            updateTabBar()
+        }
+    }
+
+    private fun updateTabBar() {
+        tabContainer.removeAllViews()
+
+        tabs.forEachIndexed { index, tab ->
+            val tabView = LayoutInflater.from(this).inflate(R.layout.tab_item, tabContainer, false)
+
+            val titleText = tabView.findViewById<TextView>(R.id.tabTitle)
+            val closeButton = tabView.findViewById<ImageButton>(R.id.tabCloseButton)
+
+            titleText.text = tab.title
+            tabView.isSelected = index == activeTabIndex
+
+            tabView.setOnClickListener {
+                switchToTab(index)
+            }
+
+            closeButton.setOnClickListener {
+                closeTab(index)
+            }
+
+            tabContainer.addView(tabView)
+        }
+    }
+
+    private fun updateTabCount() {
+        tabCountText.text = tabs.size.toString()
+    }
+
+    private fun toggleTabBar() {
+        val tabBar = findViewById<LinearLayout>(R.id.tabBar)
+        tabBar.visibility = if (tabBar.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+    }
+
+    // Menu
+    private fun showMenu() {
+        val popup = PopupMenu(this, menuButton)
+        popup.menuInflater.inflate(R.menu.browser_menu, popup.menu)
+
+        // Update bookmark item text
+        val currentUrl = webView.url ?: ""
+        val bookmarkItem = popup.menu.findItem(R.id.menu_bookmark)
+        bookmarkItem.title = if (bookmarkManager.isBookmarked(currentUrl)) {
+            "Remove bookmark"
+        } else {
+            "Add bookmark"
+        }
+
+        // Update desktop mode checkbox
+        popup.menu.findItem(R.id.menu_desktop_site).isChecked = desktopMode
+
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                R.id.menu_new_tab -> {
+                    createNewTab(homeUrl)
+                    true
+                }
+                R.id.menu_bookmark -> {
+                    toggleBookmark()
+                    true
+                }
+                R.id.menu_bookmarks -> {
+                    showBookmarks()
+                    true
+                }
+                R.id.menu_find -> {
+                    showFindBar()
+                    true
+                }
+                R.id.menu_share -> {
+                    shareCurrentPage()
+                    true
+                }
+                R.id.menu_desktop_site -> {
+                    toggleDesktopMode()
+                    true
+                }
+                R.id.menu_settings -> {
+                    Toast.makeText(this, "Settings coming soon", Toast.LENGTH_SHORT).show()
+                    true
+                }
+                else -> false
+            }
+        }
+
+        popup.show()
+    }
+
+    // Bookmarks
+    private fun toggleBookmark() {
+        val url = webView.url ?: return
+        val title = webView.title ?: url
+
+        if (bookmarkManager.isBookmarked(url)) {
+            bookmarkManager.removeBookmark(url)
+            Toast.makeText(this, "Bookmark removed", Toast.LENGTH_SHORT).show()
+        } else {
+            bookmarkManager.addBookmark(Bookmark(url = url, title = title))
+            Toast.makeText(this, "Bookmark added", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun showBookmarks() {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_bookmarks, null)
+        val recyclerView = dialogView.findViewById<RecyclerView>(R.id.bookmarksList)
+        val emptyText = dialogView.findViewById<TextView>(R.id.emptyText)
+
+        val bookmarks = bookmarkManager.getBookmarks()
+
+        val dialog = AlertDialog.Builder(this, R.style.Theme_CleanFindingBrowser_Dialog)
+            .setView(dialogView)
+            .create()
+
+        if (bookmarks.isEmpty()) {
+            recyclerView.visibility = View.GONE
+            emptyText.visibility = View.VISIBLE
+        } else {
+            recyclerView.visibility = View.VISIBLE
+            emptyText.visibility = View.GONE
+
+            recyclerView.layoutManager = LinearLayoutManager(this)
+            recyclerView.adapter = BookmarkAdapter(bookmarks, { bookmark ->
+                loadUrl(bookmark.url)
+                dialog.dismiss()
+            }, { bookmark ->
+                bookmarkManager.removeBookmark(bookmark.url)
+                showBookmarks()
+                dialog.dismiss()
+            })
+        }
+
+        dialog.show()
+    }
+
+    // Find in page
+    private fun showFindBar() {
+        findBar.visibility = View.VISIBLE
+        findEditText.requestFocus()
+        findEditText.text.clear()
+        findResultsText.text = "0/0"
+    }
+
+    private fun closeFindBar() {
+        findBar.visibility = View.GONE
+        webView.clearMatches()
+        findEditText.text.clear()
+    }
+
+    private fun performFind() {
+        val query = findEditText.text.toString()
+        if (query.isNotEmpty()) {
+            webView.findAllAsync(query)
+        }
+    }
+
+    // Share
+    private fun shareCurrentPage() {
+        val url = webView.url ?: return
+        val title = webView.title ?: "Check this out"
+
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, title)
+            putExtra(Intent.EXTRA_TEXT, "$title\n$url")
+        }
+
+        startActivity(Intent.createChooser(shareIntent, "Share via"))
+    }
+
+    // Desktop mode
+    private fun toggleDesktopMode() {
+        desktopMode = !desktopMode
+        setupWebView(webView)
+        webView.reload()
+        Toast.makeText(this, if (desktopMode) "Desktop mode enabled" else "Mobile mode enabled", Toast.LENGTH_SHORT).show()
     }
 
     private fun loadUrl(input: String) {
         var url = input.trim()
 
-        // Check if it's a search query or URL
         if (!url.contains(".") || url.contains(" ")) {
-            // It's a search query - use CleanFinding search with SafeSearch
             url = "https://cleanfinding.com/search?q=${Uri.encode(url)}"
         } else if (!url.startsWith("http://") && !url.startsWith("https://")) {
             url = "https://$url"
         }
 
-        // Check for blocked content
         if (isBlockedUrl(url)) {
             showBlockedMessage(url)
             return
         }
 
-        // Enforce SafeSearch
         url = enforceSafeSearch(url)
-
         webView.loadUrl(url)
     }
 
     private fun isBlockedUrl(url: String): Boolean {
         val lowerUrl = url.lowercase()
 
-        // Check tracker/ad domains
         for (domain in blockedDomains) {
             if (lowerUrl.contains(domain)) {
                 return true
             }
         }
 
-        // Check adult content
         for (keyword in adultDomains) {
             if (lowerUrl.contains(keyword)) {
                 return true
@@ -241,7 +564,6 @@ class MainActivity : AppCompatActivity() {
     private fun enforceSafeSearch(url: String): String {
         var safeUrl = url
 
-        // Google SafeSearch
         if (url.contains("google.") && url.contains("/search")) {
             safeUrl = if (url.contains("safe=")) {
                 url.replace(Regex("safe=[^&]*"), "safe=active")
@@ -250,7 +572,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Bing SafeSearch
         if (url.contains("bing.com") && url.contains("/search")) {
             safeUrl = if (url.contains("safeSearch=")) {
                 url.replace(Regex("safeSearch=[^&]*"), "safeSearch=Strict")
@@ -259,7 +580,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // DuckDuckGo SafeSearch
         if (url.contains("duckduckgo.com")) {
             safeUrl = if (url.contains("kp=")) {
                 url.replace(Regex("kp=[^&]*"), "kp=1")
@@ -268,22 +588,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // YouTube Restricted Mode
-        if (url.contains("youtube.com") || url.contains("youtu.be")) {
-            // YouTube restricted mode is handled via cookies/headers
-            // We enforce it through JavaScript injection
-        }
-
         return safeUrl
     }
 
-    private fun injectBlockingScript() {
+    private fun injectBlockingScript(view: WebView?) {
         val script = """
             (function() {
-                // Block trackers
                 var blockedDomains = ${blockedDomains.joinToString(",", "[", "]") { "\"$it\"" }};
 
-                // Override XMLHttpRequest
                 var originalXHR = window.XMLHttpRequest;
                 window.XMLHttpRequest = function() {
                     var xhr = new originalXHR();
@@ -300,7 +612,6 @@ class MainActivity : AppCompatActivity() {
                     return xhr;
                 };
 
-                // Override fetch
                 var originalFetch = window.fetch;
                 window.fetch = function(url, options) {
                     for (var i = 0; i < blockedDomains.length; i++) {
@@ -312,7 +623,6 @@ class MainActivity : AppCompatActivity() {
                     return originalFetch.apply(this, arguments);
                 };
 
-                // Remove ad containers
                 var adSelectors = [
                     '[class*="ad-"]', '[class*="ads-"]', '[id*="ad-"]', '[id*="ads-"]',
                     '[class*="advertisement"]', '[class*="sponsored"]',
@@ -332,7 +642,7 @@ class MainActivity : AppCompatActivity() {
             })();
         """.trimIndent()
 
-        webView.evaluateJavascript(script, null)
+        view?.evaluateJavascript(script, null)
     }
 
     private fun showBlockedMessage(url: String) {
@@ -355,11 +665,12 @@ class MainActivity : AppCompatActivity() {
         forwardButton.alpha = if (webView.canGoForward()) 1.0f else 0.5f
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack()
-        } else {
-            super.onBackPressed()
+        when {
+            findBar.visibility == View.VISIBLE -> closeFindBar()
+            webView.canGoBack() -> webView.goBack()
+            else -> super.onBackPressed()
         }
     }
 
@@ -367,4 +678,38 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         intent?.data?.toString()?.let { loadUrl(it) }
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        tabWebViews.values.forEach { it.destroy() }
+    }
+}
+
+// Bookmark Adapter
+class BookmarkAdapter(
+    private val bookmarks: List<Bookmark>,
+    private val onItemClick: (Bookmark) -> Unit,
+    private val onDeleteClick: (Bookmark) -> Unit
+) : RecyclerView.Adapter<BookmarkAdapter.ViewHolder>() {
+
+    class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val titleText: TextView = view.findViewById(R.id.bookmarkTitle)
+        val urlText: TextView = view.findViewById(R.id.bookmarkUrl)
+        val deleteButton: ImageButton = view.findViewById(R.id.deleteButton)
+    }
+
+    override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): ViewHolder {
+        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_bookmark, parent, false)
+        return ViewHolder(view)
+    }
+
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        val bookmark = bookmarks[position]
+        holder.titleText.text = bookmark.title
+        holder.urlText.text = bookmark.url
+        holder.itemView.setOnClickListener { onItemClick(bookmark) }
+        holder.deleteButton.setOnClickListener { onDeleteClick(bookmark) }
+    }
+
+    override fun getItemCount() = bookmarks.size
 }

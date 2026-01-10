@@ -23,4 +23,9 @@
     <color name="icon_tint">#a0aec0</color>
 
     <color name="progress_color">#667eea</color>
+
+    <!-- Tab Colors -->
+    <color name="tab_background">#0d1a30</color>
+    <color name="tab_inactive">#1a2744</color>
+    <color name="tab_active">#16213e</color>
 </resources>
