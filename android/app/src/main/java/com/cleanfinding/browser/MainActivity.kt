@@ -111,6 +111,9 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebView(wv: WebView) {
+        // CRITICAL FIX: Enable hardware acceleration for video playback
+        wv.setLayerType(View.LAYER_TYPE_HARDWARE, null)
+
         wv.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -124,6 +127,20 @@ class MainActivity : AppCompatActivity() {
             allowContentAccess = false
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             safeBrowsingEnabled = true
+
+            // CRITICAL FIX: Enable video playback without user gesture
+            mediaPlaybackRequiresUserGesture = false
+
+            // CRITICAL FIX: Better layout algorithm for images and content
+            layoutAlgorithm = WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING
+
+            // CRITICAL FIX: Enable all media features
+            javaScriptCanOpenWindowsAutomatically = false
+            loadsImagesAutomatically = true
+            blockNetworkImage = false
+
+            // CRITICAL FIX: Set viewport meta tag support
+            setSupportMultipleWindows(false)
 
             userAgentString = if (desktopMode) {
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 CleanFindingBrowser/1.0"
@@ -167,6 +184,7 @@ class MainActivity : AppCompatActivity() {
                     swipeRefresh.isRefreshing = false
                     updateNavigationButtons()
                     injectBlockingScript(view)
+                    injectVideoFixCSS(view)
                 }
             }
 
@@ -643,6 +661,58 @@ class MainActivity : AppCompatActivity() {
         """.trimIndent()
 
         view?.evaluateJavascript(script, null)
+    }
+
+    private fun injectVideoFixCSS(view: WebView?) {
+        // CRITICAL FIX: Inject CSS to fix video and image rendering issues
+        val cssScript = """
+            (function() {
+                var style = document.createElement('style');
+                style.textContent = `
+                    /* Fix video container sizing */
+                    video, iframe {
+                        max-width: 100% !important;
+                        height: auto !important;
+                    }
+
+                    /* Fix YouTube player */
+                    #player, .html5-video-player {
+                        width: 100% !important;
+                        height: 100% !important;
+                    }
+
+                    /* Fix black bars on videos */
+                    .video-stream {
+                        width: 100% !important;
+                        height: 100% !important;
+                        object-fit: contain !important;
+                    }
+
+                    /* Fix image rendering */
+                    img {
+                        max-width: 100% !important;
+                        height: auto !important;
+                        display: block !important;
+                    }
+
+                    /* Fix Pinterest images */
+                    [data-test-id="pin-image"], .GrowthUnauthPinImage {
+                        width: 100% !important;
+                        height: auto !important;
+                        object-fit: contain !important;
+                    }
+
+                    /* Prevent content overflow */
+                    body {
+                        overflow-x: hidden !important;
+                    }
+                `;
+                document.head.appendChild(style);
+                console.log('CleanFinding: Video/Image rendering fixes applied');
+            })();
+        """.trimIndent()
+
+        view?.evaluateJavascript(cssScript, null)
     }
 
     private fun showBlockedMessage(url: String) {
