@@ -30,11 +30,11 @@ jobs:
         run: chmod +x android/gradlew
         working-directory: .
 
-      - name: Build Release APK
-        run: ./gradlew assembleRelease
+      - name: Build Debug APK (auto-signed for installation)
+        run: ./gradlew assembleDebug
         working-directory: ./android
 
-      - name: Build Release Bundle (AAB)
+      - name: Build Release Bundle (AAB) for Play Store
         run: ./gradlew bundleRelease
         working-directory: ./android
 
@@ -49,13 +49,13 @@ jobs:
 
       - name: Rename APK
         run: |
-          mv android/app/build/outputs/apk/release/app-release-unsigned.apk android/app/build/outputs/apk/release/CleanFinding-Browser-${{ steps.version.outputs.VERSION }}.apk
+          mv android/app/build/outputs/apk/debug/app-debug.apk android/app/build/outputs/apk/debug/CleanFinding-Browser-${{ steps.version.outputs.VERSION }}.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: android/app/build/outputs/apk/release/*.apk
+          path: android/app/build/outputs/apk/debug/*.apk
           retention-days: 5
 
       - name: Upload AAB artifact
@@ -100,23 +100,30 @@ jobs:
           body: |
             ## CleanFinding Browser for Android v${{ steps.version.outputs.VERSION }}
 
-            A privacy-focused, family-safe mobile browser.
+            A privacy-focused, family-safe mobile browser with video/image rendering fixes.
+
+            ### 🎉 What's New in v${{ steps.version.outputs.VERSION }}
+            - ✅ Fixed video playback issues (YouTube, all media sites)
+            - ✅ Fixed image rendering (Pinterest, social media)
+            - ✅ Enabled hardware acceleration for smoother performance
+            - ✅ Improved mobile viewport handling
 
             ### Features
-            - SafeSearch always enabled (cannot be disabled)
-            - Built-in tracker blocking (25+ trackers)
-            - Ad blocking
-            - Family-safe content filtering
-            - Privacy-focused - no data collection
+            - 🔒 SafeSearch always enabled (cannot be disabled)
+            - 🛡️ Built-in tracker blocking (25+ trackers)
+            - 🚫 Ad blocking
+            - 👨‍👩‍👧‍👦 Family-safe content filtering
+            - 🔐 Privacy-focused - no data collection
+            - ⚡ Hardware-accelerated video playback
 
             ### Download
-            - **APK**: Direct install on Android devices
+            - **APK**: Direct install on Android devices (debug-signed for easy installation)
             - **AAB**: For Google Play Store upload
 
             ### Installation
-            1. Download the APK file
-            2. Enable "Install from unknown sources" in Settings
-            3. Open the APK and install
+            1. Download the APK file below
+            2. Enable "Install from unknown sources" in Settings > Security
+            3. Open the APK and tap "Install"
             4. Launch CleanFinding Browser
 
             ---
