@@ -30,15 +30,15 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x android/gradlew
 
-      - name: Build Release APK
+      - name: Build Debug APK
         run: |
           cd android
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleDebug --no-daemon
 
       - name: Rename APK
         run: |
           mkdir -p dist
-          find android/app/build/outputs/apk/release -name "*.apk" -exec cp {} dist/CleanFinding-Browser-${{ github.event.inputs.version }}.apk \;
+          find android/app/build/outputs/apk/debug -name "*.apk" -exec cp {} dist/CleanFinding-Browser-${{ github.event.inputs.version }}.apk \;
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
