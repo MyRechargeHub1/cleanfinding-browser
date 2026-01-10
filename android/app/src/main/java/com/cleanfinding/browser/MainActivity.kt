@@ -664,28 +664,53 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun injectVideoFixCSS(view: WebView?) {
-        // CRITICAL FIX: Inject CSS to fix video and image rendering issues
+        // CRITICAL FIX: Enhanced video and image rendering fixes with dynamic monitoring
         val cssScript = """
             (function() {
+                console.log('CleanFinding: Applying video/image fixes...');
+
+                // Inject CSS fixes
                 var style = document.createElement('style');
+                style.id = 'cleanfinding-video-fix';
                 style.textContent = `
-                    /* Fix video container sizing */
-                    video, iframe {
-                        max-width: 100% !important;
-                        height: auto !important;
-                    }
-
-                    /* Fix YouTube player */
-                    #player, .html5-video-player {
-                        width: 100% !important;
-                        height: 100% !important;
-                    }
-
-                    /* Fix black bars on videos */
-                    .video-stream {
+                    /* Force video visibility and proper layering */
+                    video, .video-stream {
+                        opacity: 1 !important;
+                        visibility: visible !important;
+                        display: block !important;
+                        background-color: #000 !important;
                         width: 100% !important;
                         height: 100% !important;
                         object-fit: contain !important;
+                        z-index: 1 !important;
+                        position: relative !important;
+                    }
+
+                    /* YouTube mobile player fixes */
+                    .html5-video-player,
+                    .html5-video-container,
+                    #player-container-inner,
+                    #movie_player {
+                        width: 100% !important;
+                        height: auto !important;
+                        min-height: 200px !important;
+                        opacity: 1 !important;
+                        visibility: visible !important;
+                        position: relative !important;
+                    }
+
+                    /* Force YouTube video to show */
+                    ytm-single-column-watch-next-results-renderer,
+                    .watch-below-the-player {
+                        margin-top: 0 !important;
+                    }
+
+                    /* Fix iframe embedding */
+                    iframe[src*="youtube"], iframe[src*="video"] {
+                        max-width: 100% !important;
+                        height: auto !important;
+                        min-height: 200px !important;
+                        visibility: visible !important;
                     }
 
                     /* Fix image rendering */
@@ -693,9 +718,10 @@ class MainActivity : AppCompatActivity() {
                         max-width: 100% !important;
                         height: auto !important;
                         display: block !important;
+                        object-fit: contain !important;
                     }
 
-                    /* Fix Pinterest images */
+                    /* Pinterest image fixes */
                     [data-test-id="pin-image"], .GrowthUnauthPinImage {
                         width: 100% !important;
                         height: auto !important;
@@ -708,7 +734,69 @@ class MainActivity : AppCompatActivity() {
                     }
                 `;
                 document.head.appendChild(style);
-                console.log('CleanFinding: Video/Image rendering fixes applied');
+
+                // Function to force video element visibility
+                function forceVideoVisibility() {
+                    // Find all video elements
+                    var videos = document.querySelectorAll('video');
+                    videos.forEach(function(video) {
+                        video.style.opacity = '1';
+                        video.style.visibility = 'visible';
+                        video.style.display = 'block';
+                        video.style.backgroundColor = '#000';
+
+                        // Force repaint
+                        video.offsetHeight;
+
+                        // Try to play if paused (for autoplay videos)
+                        if (video.paused && video.autoplay) {
+                            video.play().catch(function() {});
+                        }
+                    });
+
+                    // Fix YouTube player containers
+                    var players = document.querySelectorAll('.html5-video-player, #movie_player');
+                    players.forEach(function(player) {
+                        player.style.opacity = '1';
+                        player.style.visibility = 'visible';
+                        player.style.position = 'relative';
+                    });
+                }
+
+                // Apply fixes immediately
+                forceVideoVisibility();
+
+                // Monitor for dynamically loaded videos (YouTube loads content dynamically)
+                var observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (mutation.addedNodes.length) {
+                            mutation.addedNodes.forEach(function(node) {
+                                if (node.tagName === 'VIDEO' ||
+                                    (node.querySelector && node.querySelector('video'))) {
+                                    setTimeout(forceVideoVisibility, 100);
+                                }
+                            });
+                        }
+                    });
+                });
+
+                // Start observing document for changes
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
+
+                // Re-apply fixes periodically for first 5 seconds (for slow-loading pages)
+                var fixCount = 0;
+                var fixInterval = setInterval(function() {
+                    forceVideoVisibility();
+                    fixCount++;
+                    if (fixCount >= 10) {
+                        clearInterval(fixInterval);
+                    }
+                }, 500);
+
+                console.log('CleanFinding: Video/Image rendering fixes applied with monitoring');
             })();
         """.trimIndent()
 
