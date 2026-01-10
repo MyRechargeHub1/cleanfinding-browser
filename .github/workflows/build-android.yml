@@ -27,13 +27,16 @@ jobs:
           cache: gradle
 
       - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+        run: chmod +x android/gradlew
+        working-directory: .
 
       - name: Build Release APK
         run: ./gradlew assembleRelease
+        working-directory: ./android
 
       - name: Build Release Bundle (AAB)
         run: ./gradlew bundleRelease
+        working-directory: ./android
 
       - name: Get version
         id: version
@@ -46,20 +49,20 @@ jobs:
 
       - name: Rename APK
         run: |
-          mv app/build/outputs/apk/release/app-release-unsigned.apk app/build/outputs/apk/release/CleanFinding-Browser-${{ steps.version.outputs.VERSION }}.apk
+          mv android/app/build/outputs/apk/release/app-release-unsigned.apk android/app/build/outputs/apk/release/CleanFinding-Browser-${{ steps.version.outputs.VERSION }}.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: app/build/outputs/apk/release/*.apk
+          path: android/app/build/outputs/apk/release/*.apk
           retention-days: 5
 
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
         with:
           name: android-aab
-          path: app/build/outputs/bundle/release/*.aab
+          path: android/app/build/outputs/bundle/release/*.aab
           retention-days: 5
 
   create-release:
