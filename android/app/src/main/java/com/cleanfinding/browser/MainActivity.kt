@@ -47,6 +47,11 @@ class MainActivity : AppCompatActivity() {
 
     private var desktopMode = false
 
+    // Fullscreen video support
+    private var customView: View? = null
+    private var customViewCallback: WebChromeClient.CustomViewCallback? = null
+    private lateinit var customViewContainer: FrameLayout
+
     // Tracker domains to block
     private val blockedDomains = listOf(
         "google-analytics.com", "googletagmanager.com", "doubleclick.net",
@@ -107,6 +112,7 @@ class MainActivity : AppCompatActivity() {
         findPrevButton = findViewById(R.id.findPrevButton)
         findNextButton = findViewById(R.id.findNextButton)
         findCloseButton = findViewById(R.id.findCloseButton)
+        customViewContainer = findViewById(R.id.customViewContainer)
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -212,6 +218,52 @@ class MainActivity : AppCompatActivity() {
                 if (view == webView && title != null) {
                     updateCurrentTabTitle(title)
                 }
+            }
+
+            // CRITICAL FIX: Enable fullscreen video support for YouTube
+            override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
+                if (customView != null) {
+                    callback?.onCustomViewHidden()
+                    return
+                }
+
+                customView = view
+                customViewCallback = callback
+
+                // Hide normal content
+                findViewById<LinearLayout>(R.id.tabBar)?.visibility = View.GONE
+                findViewById<LinearLayout>(R.id.urlEditText)?.parent?.let {
+                    (it as View).visibility = View.GONE
+                }
+                webView.visibility = View.GONE
+
+                // Show fullscreen video
+                customViewContainer.visibility = View.VISIBLE
+                customViewContainer.addView(customView, FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT
+                ))
+            }
+
+            override fun onHideCustomView() {
+                if (customView == null) {
+                    return
+                }
+
+                // Hide fullscreen video
+                customViewContainer.visibility = View.GONE
+                customViewContainer.removeView(customView)
+
+                // Show normal content
+                findViewById<LinearLayout>(R.id.tabBar)?.visibility = View.VISIBLE
+                findViewById<LinearLayout>(R.id.urlEditText)?.parent?.let {
+                    (it as View).visibility = View.VISIBLE
+                }
+                webView.visibility = View.VISIBLE
+
+                customView = null
+                customViewCallback?.onCustomViewHidden()
+                customViewCallback = null
             }
         }
     }
