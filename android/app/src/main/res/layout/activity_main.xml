@@ -73,22 +73,60 @@
             android:contentDescription="Forward"
             android:tint="@color/icon_tint" />
 
-        <!-- URL Input -->
-        <EditText
-            android:id="@+id/urlEditText"
+        <!-- URL Input Container with Privacy Indicator -->
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="36dp"
             android:layout_weight="1"
             android:layout_marginHorizontal="4dp"
             android:background="@drawable/url_background"
-            android:paddingHorizontal="12dp"
-            android:hint="Search or enter URL"
-            android:textColorHint="@color/hint_text"
-            android:textColor="@color/text_primary"
-            android:textSize="14sp"
-            android:singleLine="true"
-            android:imeOptions="actionGo"
-            android:inputType="textUri" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="4dp">
+
+            <!-- HTTPS Lock Icon -->
+            <TextView
+                android:id="@+id/httpsIcon"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:text="🔒"
+                android:textSize="12sp"
+                android:visibility="gone"
+                android:layout_marginEnd="4dp"
+                android:gravity="center" />
+
+            <!-- URL Input -->
+            <EditText
+                android:id="@+id/urlEditText"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:hint="Search or enter URL"
+                android:textColorHint="@color/hint_text"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp"
+                android:singleLine="true"
+                android:imeOptions="actionGo"
+                android:inputType="textUri" />
+
+            <!-- Privacy Grade Badge -->
+            <TextView
+                android:id="@+id/privacyGradeBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="24dp"
+                android:paddingHorizontal="6dp"
+                android:gravity="center"
+                android:text="A"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:background="@drawable/privacy_grade_background"
+                android:visibility="gone"
+                android:layout_marginStart="4dp" />
+
+        </LinearLayout>
 
         <!-- Home Button -->
         <ImageButton

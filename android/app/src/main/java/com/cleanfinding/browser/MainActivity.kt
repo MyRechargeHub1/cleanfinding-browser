@@ -37,9 +37,18 @@ class MainActivity : AppCompatActivity() {
     private lateinit var findPrevButton: ImageButton
     private lateinit var findNextButton: ImageButton
     private lateinit var findCloseButton: ImageButton
+    private lateinit var httpsIcon: TextView
+    private lateinit var privacyGradeBadge: TextView
 
     private lateinit var bookmarkManager: BookmarkManager
     private lateinit var historyManager: HistoryManager
+    private lateinit var downloadManager: DownloadManagerHelper
+    private lateinit var preferencesManager: PreferencesManager
+    private lateinit var privacyGradeCalculator: PrivacyGradeCalculator
+
+    // Privacy tracking
+    private var currentPageTrackersBlocked = 0
+    private val currentPageBlockedDomains = mutableListOf<String>()
 
     // Tab management
     private val tabs = mutableListOf<Tab>()
@@ -82,6 +91,8 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val REQUEST_HISTORY = 1001
+        private const val REQUEST_DOWNLOADS = 1002
+        private const val REQUEST_SETTINGS = 1003
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -91,6 +102,9 @@ class MainActivity : AppCompatActivity() {
 
         bookmarkManager = BookmarkManager(this)
         historyManager = HistoryManager(this)
+        downloadManager = DownloadManagerHelper(this)
+        preferencesManager = PreferencesManager(this)
+        privacyGradeCalculator = PrivacyGradeCalculator()
 
         initViews()
         setupListeners()
@@ -118,18 +132,21 @@ class MainActivity : AppCompatActivity() {
         findPrevButton = findViewById(R.id.findPrevButton)
         findNextButton = findViewById(R.id.findNextButton)
         findCloseButton = findViewById(R.id.findCloseButton)
+        httpsIcon = findViewById(R.id.httpsIcon)
+        privacyGradeBadge = findViewById(R.id.privacyGradeBadge)
         customViewContainer = findViewById(R.id.customViewContainer)
     }
 
     @SuppressLint("SetJavaScriptEnabled")
-    private fun setupWebView(wv: WebView) {
+    private fun setupWebView(wv: WebView, isIncognito: Boolean = false) {
         // CRITICAL FIX: Enable hardware acceleration for video playback
         wv.setLayerType(View.LAYER_TYPE_HARDWARE, null)
 
         wv.settings.apply {
-            javaScriptEnabled = true
-            domStorageEnabled = true
-            databaseEnabled = true
+            // Apply settings from preferences (or defaults for incognito)
+            javaScriptEnabled = if (isIncognito) true else preferencesManager.getJavaScriptEnabled()
+            domStorageEnabled = if (isIncognito) false else preferencesManager.getDomStorageEnabled()
+            databaseEnabled = if (isIncognito) false else preferencesManager.getDomStorageEnabled()
             setSupportZoom(true)
             builtInZoomControls = true
             displayZoomControls = false
@@ -140,6 +157,27 @@ class MainActivity : AppCompatActivity() {
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             safeBrowsingEnabled = true
 
+            // Apply cache mode settings
+            if (isIncognito) {
+                cacheMode = WebSettings.LOAD_NO_CACHE
+                setAppCacheEnabled(false)
+            } else {
+                cacheMode = when (preferencesManager.getCacheMode()) {
+                    "normal" -> WebSettings.LOAD_DEFAULT
+                    "prefer_cache" -> WebSettings.LOAD_CACHE_ELSE_NETWORK
+                    "no_cache" -> WebSettings.LOAD_NO_CACHE
+                    "cache_only" -> WebSettings.LOAD_CACHE_ONLY
+                    else -> WebSettings.LOAD_DEFAULT
+                }
+            }
+
+            // Apply text size setting
+            textZoom = preferencesManager.getTextSize()
+
+            // Apply image loading setting
+            loadsImagesAutomatically = if (isIncognito) true else preferencesManager.getShowImages()
+            blockNetworkImage = if (isIncognito) false else !preferencesManager.getShowImages()
+
             // CRITICAL FIX: Enable video playback without user gesture
             mediaPlaybackRequiresUserGesture = false
 
@@ -148,8 +186,6 @@ class MainActivity : AppCompatActivity() {
 
             // CRITICAL FIX: Enable all media features
             javaScriptCanOpenWindowsAutomatically = false
-            loadsImagesAutomatically = true
-            blockNetworkImage = false
 
             // CRITICAL FIX: Set viewport meta tag support
             setSupportMultipleWindows(false)
@@ -182,11 +218,37 @@ class MainActivity : AppCompatActivity() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
                 if (view == webView) {
+                    // Reset tracker counter for new page
+                    currentPageTrackersBlocked = 0
+                    currentPageBlockedDomains.clear()
+
                     progressBar.visibility = View.VISIBLE
                     urlEditText.setText(url)
                     updateNavigationButtons()
                     updateCurrentTabUrl(url ?: homeUrl)
                 }
+            }
+
+            override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                val url = request?.url?.toString() ?: return super.shouldInterceptRequest(view, request)
+
+                // Check if URL contains blocked domain
+                for (domain in blockedDomains) {
+                    if (url.contains(domain)) {
+                        // Increment tracker count
+                        if (view == webView) {
+                            currentPageTrackersBlocked++
+                            if (!currentPageBlockedDomains.contains(domain)) {
+                                currentPageBlockedDomains.add(domain)
+                            }
+                        }
+
+                        // Return empty response to block the request
+                        return WebResourceResponse("text/plain", "utf-8", null)
+                    }
+                }
+
+                return super.shouldInterceptRequest(view, request)
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -201,8 +263,13 @@ class MainActivity : AppCompatActivity() {
                     // Record page visit in history (if not incognito)
                     url?.let {
                         val title = view.title ?: ""
-                        val isIncognito = false // TODO: Update when incognito mode is implemented
+                        val isIncognito = if (activeTabIndex < tabs.size) tabs[activeTabIndex].isIncognito else false
                         historyManager.recordVisit(it, title, isIncognito)
+                    }
+
+                    // Calculate and display privacy grade
+                    url?.let {
+                        updatePrivacyGrade(it)
                     }
                 }
             }
@@ -278,6 +345,19 @@ class MainActivity : AppCompatActivity() {
                 customViewCallback?.onCustomViewHidden()
                 customViewCallback = null
             }
+        }
+
+        // Download listener
+        wv.setDownloadListener { url, userAgent, contentDisposition, mimeType, contentLength ->
+            downloadManager.startDownload(url, null, mimeType, userAgent, contentDisposition)
+            Toast.makeText(this, "Download started", Toast.LENGTH_SHORT).show()
+        }
+
+        // Apply cookie settings
+        if (isIncognito) {
+            CookieManager.getInstance().setAcceptCookie(false)
+        } else {
+            CookieManager.getInstance().setAcceptCookie(preferencesManager.getCookiesEnabled())
         }
     }
 
@@ -358,12 +438,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     // Tab Management
-    private fun createNewTab(url: String) {
-        val tab = Tab(url = url, title = "New Tab")
+    private fun createNewTab(url: String, isIncognito: Boolean = false) {
+        val tab = Tab(url = url, title = if (isIncognito) "Incognito Tab" else "New Tab", isIncognito = isIncognito)
         tabs.add(tab)
 
         val newWebView = WebView(this)
-        setupWebView(newWebView)
+        setupWebView(newWebView, isIncognito)
         tabWebViews[tab.id] = newWebView
 
         switchToTab(tabs.size - 1)
@@ -419,6 +499,63 @@ class MainActivity : AppCompatActivity() {
         switchToTab(activeTabIndex)
     }
 
+    private fun closeAllIncognitoTabs() {
+        val incognitoCount = tabs.count { it.isIncognito }
+
+        if (incognitoCount == 0) {
+            Toast.makeText(this, "No incognito tabs to close", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Close Incognito Tabs?")
+            .setMessage("Close all $incognitoCount incognito tab${if (incognitoCount != 1) "s" else ""}?")
+            .setPositiveButton("Close") { _, _ ->
+                // Close incognito tabs from end to beginning to avoid index issues
+                for (i in tabs.size - 1 downTo 0) {
+                    if (tabs[i].isIncognito) {
+                        val tab = tabs[i]
+                        tabWebViews[tab.id]?.apply {
+                            // Clear WebView data for incognito tabs
+                            clearCache(true)
+                            clearFormData()
+                            clearHistory()
+                            destroy()
+                        }
+                        tabWebViews.remove(tab.id)
+                        tabs.removeAt(i)
+
+                        // Adjust active tab index if necessary
+                        if (i < activeTabIndex) {
+                            activeTabIndex--
+                        } else if (i == activeTabIndex) {
+                            // Active tab was closed, will switch to another
+                            activeTabIndex = -1
+                        }
+                    }
+                }
+
+                // Create a new tab if all tabs were closed
+                if (tabs.isEmpty()) {
+                    createNewTab(homeUrl)
+                } else {
+                    // Switch to valid tab if active was closed
+                    if (activeTabIndex < 0 || activeTabIndex >= tabs.size) {
+                        activeTabIndex = minOf(activeTabIndex, tabs.size - 1).coerceAtLeast(0)
+                    }
+                    switchToTab(activeTabIndex)
+                }
+
+                // Clear incognito cookies and cache
+                CookieManager.getInstance().removeAllCookies(null)
+                CookieManager.getInstance().flush()
+
+                Toast.makeText(this, "Closed $incognitoCount incognito tab${if (incognitoCount != 1) "s" else ""}", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
     private fun updateCurrentTabUrl(url: String) {
         if (activeTabIndex < tabs.size) {
             tabs[activeTabIndex].url = url
@@ -438,8 +575,12 @@ class MainActivity : AppCompatActivity() {
         tabs.forEachIndexed { index, tab ->
             val tabView = LayoutInflater.from(this).inflate(R.layout.tab_item, tabContainer, false)
 
+            val incognitoIcon = tabView.findViewById<TextView>(R.id.incognitoIcon)
             val titleText = tabView.findViewById<TextView>(R.id.tabTitle)
             val closeButton = tabView.findViewById<ImageButton>(R.id.tabCloseButton)
+
+            // Show incognito icon for incognito tabs
+            incognitoIcon.visibility = if (tab.isIncognito) View.VISIBLE else View.GONE
 
             titleText.text = tab.title
             tabView.isSelected = index == activeTabIndex
@@ -488,6 +629,15 @@ class MainActivity : AppCompatActivity() {
                     createNewTab(homeUrl)
                     true
                 }
+                R.id.menu_new_incognito_tab -> {
+                    createNewTab(homeUrl, isIncognito = true)
+                    Toast.makeText(this, "Incognito tab created", Toast.LENGTH_SHORT).show()
+                    true
+                }
+                R.id.menu_close_incognito_tabs -> {
+                    closeAllIncognitoTabs()
+                    true
+                }
                 R.id.menu_bookmark -> {
                     toggleBookmark()
                     true
@@ -498,6 +648,10 @@ class MainActivity : AppCompatActivity() {
                 }
                 R.id.menu_history -> {
                     showHistory()
+                    true
+                }
+                R.id.menu_downloads -> {
+                    showDownloads()
                     true
                 }
                 R.id.menu_find -> {
@@ -513,7 +667,7 @@ class MainActivity : AppCompatActivity() {
                     true
                 }
                 R.id.menu_settings -> {
-                    Toast.makeText(this, "Settings coming soon", Toast.LENGTH_SHORT).show()
+                    showSettings()
                     true
                 }
                 else -> false
@@ -572,6 +726,16 @@ class MainActivity : AppCompatActivity() {
     private fun showHistory() {
         val intent = Intent(this, HistoryActivity::class.java)
         startActivityForResult(intent, REQUEST_HISTORY)
+    }
+
+    private fun showDownloads() {
+        val intent = Intent(this, DownloadsActivity::class.java)
+        startActivityForResult(intent, REQUEST_DOWNLOADS)
+    }
+
+    private fun showSettings() {
+        val intent = Intent(this, SettingsActivity::class.java)
+        startActivityForResult(intent, REQUEST_SETTINGS)
     }
 
     // Find in page
@@ -897,6 +1061,48 @@ class MainActivity : AppCompatActivity() {
         forwardButton.alpha = if (webView.canGoForward()) 1.0f else 0.5f
     }
 
+    private fun updatePrivacyGrade(url: String) {
+        // Calculate privacy grade
+        val privacyScore = privacyGradeCalculator.calculateGrade(
+            url = url,
+            trackersBlocked = currentPageTrackersBlocked,
+            blockedDomains = currentPageBlockedDomains
+        )
+
+        // Update HTTPS lock icon
+        if (privacyScore.isHttps) {
+            httpsIcon.visibility = View.VISIBLE
+        } else {
+            httpsIcon.visibility = View.GONE
+        }
+
+        // Update privacy grade badge
+        privacyGradeBadge.visibility = View.VISIBLE
+        privacyGradeBadge.text = privacyScore.grade
+
+        // Set badge background color based on grade
+        val backgroundColor = android.graphics.Color.parseColor(privacyScore.color)
+        val drawable = privacyGradeBadge.background
+        if (drawable is android.graphics.drawable.GradientDrawable) {
+            drawable.setColor(backgroundColor)
+        }
+
+        // Make badge clickable to show details
+        privacyGradeBadge.setOnClickListener {
+            showPrivacyDetails(privacyScore)
+        }
+    }
+
+    private fun showPrivacyDetails(privacyScore: PrivacyGradeCalculator.PrivacyScore) {
+        val detailsReport = privacyGradeCalculator.getDetailedReport(privacyScore)
+
+        AlertDialog.Builder(this)
+            .setTitle("${privacyGradeCalculator.getGradeEmoji(privacyScore.grade)} Privacy Report")
+            .setMessage(detailsReport)
+            .setPositiveButton("OK", null)
+            .show()
+    }
+
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         when {
@@ -921,6 +1127,24 @@ class MainActivity : AppCompatActivity() {
                     data?.getStringExtra("url")?.let { url ->
                         loadUrl(url)
                     }
+                }
+            }
+            REQUEST_DOWNLOADS -> {
+                if (resultCode == RESULT_OK) {
+                    data?.getStringExtra("url")?.let { url ->
+                        loadUrl(url)
+                    }
+                }
+            }
+            REQUEST_SETTINGS -> {
+                if (resultCode == RESULT_OK) {
+                    // Settings were changed, reload all WebViews with new settings
+                    tabWebViews.values.forEach { wv ->
+                        val tab = tabs.find { tabWebViews[it.id] == wv }
+                        setupWebView(wv, tab?.isIncognito ?: false)
+                    }
+                    webView.reload()
+                    Toast.makeText(this, "Settings applied", Toast.LENGTH_SHORT).show()
                 }
             }
         }

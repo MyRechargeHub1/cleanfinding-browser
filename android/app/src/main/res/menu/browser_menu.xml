@@ -4,6 +4,12 @@
         android:id="@+id/menu_new_tab"
         android:title="New tab" />
     <item
+        android:id="@+id/menu_new_incognito_tab"
+        android:title="New incognito tab" />
+    <item
+        android:id="@+id/menu_close_incognito_tabs"
+        android:title="🔥 Close incognito tabs" />
+    <item
         android:id="@+id/menu_bookmark"
         android:title="Add bookmark" />
     <item
@@ -12,6 +18,9 @@
     <item
         android:id="@+id/menu_history"
         android:title="History" />
+    <item
+        android:id="@+id/menu_downloads"
+        android:title="Downloads" />
     <item
         android:id="@+id/menu_find"
         android:title="Find in page" />
