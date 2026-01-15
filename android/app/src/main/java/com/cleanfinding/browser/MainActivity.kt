@@ -42,6 +42,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var historyManager: HistoryManager
     private lateinit var downloadManager: DownloadManagerHelper
     private lateinit var preferencesManager: PreferencesManager
+    private lateinit var privacyGradeCalculator: PrivacyGradeCalculator
+
+    // Privacy tracking
+    private var currentPageTrackersBlocked = 0
+    private val currentPageBlockedDomains = mutableListOf<String>()
 
     // Tab management
     private val tabs = mutableListOf<Tab>()
@@ -97,6 +102,7 @@ class MainActivity : AppCompatActivity() {
         historyManager = HistoryManager(this)
         downloadManager = DownloadManagerHelper(this)
         preferencesManager = PreferencesManager(this)
+        privacyGradeCalculator = PrivacyGradeCalculator()
 
         initViews()
         setupListeners()
@@ -208,11 +214,37 @@ class MainActivity : AppCompatActivity() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
                 if (view == webView) {
+                    // Reset tracker counter for new page
+                    currentPageTrackersBlocked = 0
+                    currentPageBlockedDomains.clear()
+
                     progressBar.visibility = View.VISIBLE
                     urlEditText.setText(url)
                     updateNavigationButtons()
                     updateCurrentTabUrl(url ?: homeUrl)
                 }
+            }
+
+            override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                val url = request?.url?.toString() ?: return super.shouldInterceptRequest(view, request)
+
+                // Check if URL contains blocked domain
+                for (domain in blockedDomains) {
+                    if (url.contains(domain)) {
+                        // Increment tracker count
+                        if (view == webView) {
+                            currentPageTrackersBlocked++
+                            if (!currentPageBlockedDomains.contains(domain)) {
+                                currentPageBlockedDomains.add(domain)
+                            }
+                        }
+
+                        // Return empty response to block the request
+                        return WebResourceResponse("text/plain", "utf-8", null)
+                    }
+                }
+
+                return super.shouldInterceptRequest(view, request)
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -229,6 +261,11 @@ class MainActivity : AppCompatActivity() {
                         val title = view.title ?: ""
                         val isIncognito = if (activeTabIndex < tabs.size) tabs[activeTabIndex].isIncognito else false
                         historyManager.recordVisit(it, title, isIncognito)
+                    }
+
+                    // Calculate and display privacy grade
+                    url?.let {
+                        updatePrivacyGrade(it)
                     }
                 }
             }
@@ -1018,6 +1055,28 @@ class MainActivity : AppCompatActivity() {
         backButton.alpha = if (webView.canGoBack()) 1.0f else 0.5f
         forwardButton.isEnabled = webView.canGoForward()
         forwardButton.alpha = if (webView.canGoForward()) 1.0f else 0.5f
+    }
+
+    private fun updatePrivacyGrade(url: String) {
+        // Calculate privacy grade
+        val privacyScore = privacyGradeCalculator.calculateGrade(
+            url = url,
+            trackersBlocked = currentPageTrackersBlocked,
+            blockedDomains = currentPageBlockedDomains
+        )
+
+        // Display privacy information
+        if (currentPageTrackersBlocked > 0 || !privacyScore.isHttps) {
+            val emoji = privacyGradeCalculator.getGradeEmoji(privacyScore.grade)
+            val message = if (currentPageTrackersBlocked > 0) {
+                "$emoji Blocked $currentPageTrackersBlocked tracker${if (currentPageTrackersBlocked != 1) "s" else ""} • Grade: ${privacyScore.grade}"
+            } else {
+                "$emoji Privacy Grade: ${privacyScore.grade}"
+            }
+
+            // Show as toast for now (will be replaced with proper UI)
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        }
     }
 
     @Deprecated("Deprecated in Java")
