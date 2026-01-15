@@ -37,6 +37,12 @@
             android:summary="Enable Safe Search on all search engines"
             android:defaultValue="true" />
 
+        <SwitchPreferenceCompat
+            android:key="biometric_lock_incognito"
+            android:title="🔒 Biometric lock for incognito"
+            android:summary="Require fingerprint or face unlock to access incognito tabs"
+            android:defaultValue="false" />
+
     </PreferenceCategory>
 
     <!-- Appearance Settings Category -->

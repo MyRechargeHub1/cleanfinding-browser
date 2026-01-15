@@ -48,6 +48,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var privacyStatsManager: PrivacyStatsManager
     private lateinit var cookieConsentHandler: CookieConsentHandler
     private lateinit var gpcHandler: GlobalPrivacyControlHandler
+    private lateinit var biometricAuthHelper: BiometricAuthHelper
 
     // Privacy tracking
     private var currentPageTrackersBlocked = 0
@@ -111,6 +112,7 @@ class MainActivity : AppCompatActivity() {
         privacyStatsManager = PrivacyStatsManager(this)
         cookieConsentHandler = CookieConsentHandler()
         gpcHandler = GlobalPrivacyControlHandler()
+        biometricAuthHelper = BiometricAuthHelper(this)
 
         initViews()
         setupListeners()
@@ -453,6 +455,44 @@ class MainActivity : AppCompatActivity() {
 
     // Tab Management
     private fun createNewTab(url: String, isIncognito: Boolean = false) {
+        // Check if biometric lock is required for incognito mode
+        if (isIncognito && preferencesManager.getBiometricLockIncognito()) {
+            if (!biometricAuthHelper.isBiometricAvailable()) {
+                // Biometric not available, show message and don't create tab
+                AlertDialog.Builder(this)
+                    .setTitle("Biometric Unavailable")
+                    .setMessage("${biometricAuthHelper.getBiometricStatusMessage()}\n\nPlease disable biometric lock in Settings or set up biometric authentication on your device.")
+                    .setPositiveButton("OK", null)
+                    .setNeutralButton("Settings") { _, _ ->
+                        showSettings()
+                    }
+                    .show()
+                return
+            }
+
+            // Show biometric prompt
+            biometricAuthHelper.authenticate(
+                title = "Unlock Incognito Mode",
+                subtitle = "Use biometric to create incognito tab",
+                onSuccess = {
+                    // Authentication successful, create incognito tab
+                    createNewTabInternal(url, isIncognito)
+                },
+                onError = { errorMessage ->
+                    Toast.makeText(this, "Authentication error: $errorMessage", Toast.LENGTH_SHORT).show()
+                },
+                onCancel = {
+                    // User cancelled, don't create tab
+                    Toast.makeText(this, "Incognito tab creation cancelled", Toast.LENGTH_SHORT).show()
+                }
+            )
+        } else {
+            // No biometric lock required, create tab normally
+            createNewTabInternal(url, isIncognito)
+        }
+    }
+
+    private fun createNewTabInternal(url: String, isIncognito: Boolean = false) {
         val tab = Tab(url = url, title = if (isIncognito) "Incognito Tab" else "New Tab", isIncognito = isIncognito)
         tabs.add(tab)
 
@@ -460,12 +500,55 @@ class MainActivity : AppCompatActivity() {
         setupWebView(newWebView, isIncognito)
         tabWebViews[tab.id] = newWebView
 
-        switchToTab(tabs.size - 1)
+        // Bypass biometric check since we already authenticated when creating the tab
+        switchToTab(tabs.size - 1, bypassBiometric = true)
         loadUrl(url)
         updateTabBar()
     }
 
-    private fun switchToTab(index: Int) {
+    private fun switchToTab(index: Int, bypassBiometric: Boolean = false) {
+        if (index < 0 || index >= tabs.size) return
+
+        // Check if biometric lock is required for incognito tabs
+        val targetTab = tabs[index]
+        if (!bypassBiometric && targetTab.isIncognito && preferencesManager.getBiometricLockIncognito()) {
+            // Don't require auth if we're already on an incognito tab (switching between incognito tabs)
+            val currentTab = if (activeTabIndex >= 0 && activeTabIndex < tabs.size) tabs[activeTabIndex] else null
+            if (currentTab?.isIncognito == true) {
+                // Already authenticated, allow switch
+                switchToTabInternal(index)
+                return
+            }
+
+            if (!biometricAuthHelper.isBiometricAvailable()) {
+                // Biometric not available, show message and don't switch
+                Toast.makeText(this, "Biometric authentication required to access incognito tabs", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            // Show biometric prompt
+            biometricAuthHelper.authenticate(
+                title = "Unlock Incognito Tab",
+                subtitle = "Use biometric to access incognito tab",
+                onSuccess = {
+                    // Authentication successful, switch to tab
+                    switchToTabInternal(index)
+                },
+                onError = { errorMessage ->
+                    Toast.makeText(this, "Authentication error: $errorMessage", Toast.LENGTH_SHORT).show()
+                },
+                onCancel = {
+                    // User cancelled, don't switch tab
+                    Toast.makeText(this, "Tab switch cancelled", Toast.LENGTH_SHORT).show()
+                }
+            )
+        } else {
+            // No biometric lock required, switch tab normally
+            switchToTabInternal(index)
+        }
+    }
+
+    private fun switchToTabInternal(index: Int) {
         if (index < 0 || index >= tabs.size) return
 
         // Save current webview state
