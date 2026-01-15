@@ -40,6 +40,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var bookmarkManager: BookmarkManager
     private lateinit var historyManager: HistoryManager
+    private lateinit var downloadManager: DownloadManagerHelper
 
     // Tab management
     private val tabs = mutableListOf<Tab>()
@@ -82,6 +83,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val REQUEST_HISTORY = 1001
+        private const val REQUEST_DOWNLOADS = 1002
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -91,6 +93,7 @@ class MainActivity : AppCompatActivity() {
 
         bookmarkManager = BookmarkManager(this)
         historyManager = HistoryManager(this)
+        downloadManager = DownloadManagerHelper(this)
 
         initViews()
         setupListeners()
@@ -278,6 +281,12 @@ class MainActivity : AppCompatActivity() {
                 customViewCallback?.onCustomViewHidden()
                 customViewCallback = null
             }
+        }
+
+        // Download listener
+        wv.setDownloadListener { url, userAgent, contentDisposition, mimeType, contentLength ->
+            downloadManager.startDownload(url, null, mimeType, userAgent, contentDisposition)
+            Toast.makeText(this, "Download started", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -500,6 +509,10 @@ class MainActivity : AppCompatActivity() {
                     showHistory()
                     true
                 }
+                R.id.menu_downloads -> {
+                    showDownloads()
+                    true
+                }
                 R.id.menu_find -> {
                     showFindBar()
                     true
@@ -572,6 +585,11 @@ class MainActivity : AppCompatActivity() {
     private fun showHistory() {
         val intent = Intent(this, HistoryActivity::class.java)
         startActivityForResult(intent, REQUEST_HISTORY)
+    }
+
+    private fun showDownloads() {
+        val intent = Intent(this, DownloadsActivity::class.java)
+        startActivityForResult(intent, REQUEST_DOWNLOADS)
     }
 
     // Find in page
@@ -917,6 +935,13 @@ class MainActivity : AppCompatActivity() {
 
         when (requestCode) {
             REQUEST_HISTORY -> {
+                if (resultCode == RESULT_OK) {
+                    data?.getStringExtra("url")?.let { url ->
+                        loadUrl(url)
+                    }
+                }
+            }
+            REQUEST_DOWNLOADS -> {
                 if (resultCode == RESULT_OK) {
                     data?.getStringExtra("url")?.let { url ->
                         loadUrl(url)

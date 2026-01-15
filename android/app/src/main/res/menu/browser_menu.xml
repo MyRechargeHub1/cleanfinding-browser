@@ -13,6 +13,9 @@
         android:id="@+id/menu_history"
         android:title="History" />
     <item
+        android:id="@+id/menu_downloads"
+        android:title="Downloads" />
+    <item
         android:id="@+id/menu_find"
         android:title="Find in page" />
     <item
