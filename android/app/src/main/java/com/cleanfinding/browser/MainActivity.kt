@@ -50,6 +50,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var gpcHandler: GlobalPrivacyControlHandler
     private lateinit var biometricAuthHelper: BiometricAuthHelper
     private lateinit var duckPlayerHandler: DuckPlayerHandler
+    private lateinit var emailProtectionHandler: EmailProtectionHandler
 
     // Privacy tracking
     private var currentPageTrackersBlocked = 0
@@ -115,6 +116,7 @@ class MainActivity : AppCompatActivity() {
         gpcHandler = GlobalPrivacyControlHandler()
         biometricAuthHelper = BiometricAuthHelper(this)
         duckPlayerHandler = DuckPlayerHandler()
+        emailProtectionHandler = EmailProtectionHandler()
 
         initViews()
         setupListeners()
@@ -267,6 +269,17 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
+                // Check if Email Protection is enabled and URL is a tracking pixel
+                if (preferencesManager.getEmailProtection() && emailProtectionHandler.isTrackingPixel(url)) {
+                    // Increment tracker count
+                    if (view == webView) {
+                        currentPageTrackersBlocked++
+                    }
+
+                    // Return empty response to block the tracking pixel
+                    return WebResourceResponse("image/png", "utf-8", null)
+                }
+
                 return super.shouldInterceptRequest(view, request)
             }
 
@@ -290,6 +303,11 @@ class MainActivity : AppCompatActivity() {
                     // Apply Duck Player enhancements for YouTube
                     if (preferencesManager.getDuckPlayer() && url?.let { duckPlayerHandler.isYouTubeUrl(it) } == true) {
                         duckPlayerHandler.injectDuckPlayerEnhancements(view)
+                    }
+
+                    // Apply Email Protection for webmail services
+                    if (preferencesManager.getEmailProtection() && url != null) {
+                        emailProtectionHandler.injectEmailProtection(view, url)
                     }
 
                     // Record page visit in history (if not incognito)
