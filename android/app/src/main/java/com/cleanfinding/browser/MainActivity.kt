@@ -125,14 +125,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     @SuppressLint("SetJavaScriptEnabled")
-    private fun setupWebView(wv: WebView) {
+    private fun setupWebView(wv: WebView, isIncognito: Boolean = false) {
         // CRITICAL FIX: Enable hardware acceleration for video playback
         wv.setLayerType(View.LAYER_TYPE_HARDWARE, null)
 
         wv.settings.apply {
             javaScriptEnabled = true
-            domStorageEnabled = true
-            databaseEnabled = true
+            domStorageEnabled = !isIncognito // Disable DOM storage in incognito
+            databaseEnabled = !isIncognito // Disable database in incognito
             setSupportZoom(true)
             builtInZoomControls = true
             displayZoomControls = false
@@ -142,6 +142,12 @@ class MainActivity : AppCompatActivity() {
             allowContentAccess = false
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             safeBrowsingEnabled = true
+
+            // Incognito mode: disable cache and cookies
+            if (isIncognito) {
+                cacheMode = WebSettings.LOAD_NO_CACHE
+                setAppCacheEnabled(false)
+            }
 
             // CRITICAL FIX: Enable video playback without user gesture
             mediaPlaybackRequiresUserGesture = false
@@ -204,7 +210,7 @@ class MainActivity : AppCompatActivity() {
                     // Record page visit in history (if not incognito)
                     url?.let {
                         val title = view.title ?: ""
-                        val isIncognito = false // TODO: Update when incognito mode is implemented
+                        val isIncognito = if (activeTabIndex < tabs.size) tabs[activeTabIndex].isIncognito else false
                         historyManager.recordVisit(it, title, isIncognito)
                     }
                 }
@@ -288,6 +294,13 @@ class MainActivity : AppCompatActivity() {
             downloadManager.startDownload(url, null, mimeType, userAgent, contentDisposition)
             Toast.makeText(this, "Download started", Toast.LENGTH_SHORT).show()
         }
+
+        // Incognito mode: disable cookies
+        if (isIncognito) {
+            CookieManager.getInstance().setAcceptCookie(false)
+        } else {
+            CookieManager.getInstance().setAcceptCookie(true)
+        }
     }
 
     private fun setupListeners() {
@@ -367,12 +380,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     // Tab Management
-    private fun createNewTab(url: String) {
-        val tab = Tab(url = url, title = "New Tab")
+    private fun createNewTab(url: String, isIncognito: Boolean = false) {
+        val tab = Tab(url = url, title = if (isIncognito) "Incognito Tab" else "New Tab", isIncognito = isIncognito)
         tabs.add(tab)
 
         val newWebView = WebView(this)
-        setupWebView(newWebView)
+        setupWebView(newWebView, isIncognito)
         tabWebViews[tab.id] = newWebView
 
         switchToTab(tabs.size - 1)
@@ -428,6 +441,63 @@ class MainActivity : AppCompatActivity() {
         switchToTab(activeTabIndex)
     }
 
+    private fun closeAllIncognitoTabs() {
+        val incognitoCount = tabs.count { it.isIncognito }
+
+        if (incognitoCount == 0) {
+            Toast.makeText(this, "No incognito tabs to close", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Close Incognito Tabs?")
+            .setMessage("Close all $incognitoCount incognito tab${if (incognitoCount != 1) "s" else ""}?")
+            .setPositiveButton("Close") { _, _ ->
+                // Close incognito tabs from end to beginning to avoid index issues
+                for (i in tabs.size - 1 downTo 0) {
+                    if (tabs[i].isIncognito) {
+                        val tab = tabs[i]
+                        tabWebViews[tab.id]?.apply {
+                            // Clear WebView data for incognito tabs
+                            clearCache(true)
+                            clearFormData()
+                            clearHistory()
+                            destroy()
+                        }
+                        tabWebViews.remove(tab.id)
+                        tabs.removeAt(i)
+
+                        // Adjust active tab index if necessary
+                        if (i < activeTabIndex) {
+                            activeTabIndex--
+                        } else if (i == activeTabIndex) {
+                            // Active tab was closed, will switch to another
+                            activeTabIndex = -1
+                        }
+                    }
+                }
+
+                // Create a new tab if all tabs were closed
+                if (tabs.isEmpty()) {
+                    createNewTab(homeUrl)
+                } else {
+                    // Switch to valid tab if active was closed
+                    if (activeTabIndex < 0 || activeTabIndex >= tabs.size) {
+                        activeTabIndex = minOf(activeTabIndex, tabs.size - 1).coerceAtLeast(0)
+                    }
+                    switchToTab(activeTabIndex)
+                }
+
+                // Clear incognito cookies and cache
+                CookieManager.getInstance().removeAllCookies(null)
+                CookieManager.getInstance().flush()
+
+                Toast.makeText(this, "Closed $incognitoCount incognito tab${if (incognitoCount != 1) "s" else ""}", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
     private fun updateCurrentTabUrl(url: String) {
         if (activeTabIndex < tabs.size) {
             tabs[activeTabIndex].url = url
@@ -447,8 +517,12 @@ class MainActivity : AppCompatActivity() {
         tabs.forEachIndexed { index, tab ->
             val tabView = LayoutInflater.from(this).inflate(R.layout.tab_item, tabContainer, false)
 
+            val incognitoIcon = tabView.findViewById<TextView>(R.id.incognitoIcon)
             val titleText = tabView.findViewById<TextView>(R.id.tabTitle)
             val closeButton = tabView.findViewById<ImageButton>(R.id.tabCloseButton)
+
+            // Show incognito icon for incognito tabs
+            incognitoIcon.visibility = if (tab.isIncognito) View.VISIBLE else View.GONE
 
             titleText.text = tab.title
             tabView.isSelected = index == activeTabIndex
@@ -495,6 +569,15 @@ class MainActivity : AppCompatActivity() {
             when (item.itemId) {
                 R.id.menu_new_tab -> {
                     createNewTab(homeUrl)
+                    true
+                }
+                R.id.menu_new_incognito_tab -> {
+                    createNewTab(homeUrl, isIncognito = true)
+                    Toast.makeText(this, "Incognito tab created", Toast.LENGTH_SHORT).show()
+                    true
+                }
+                R.id.menu_close_incognito_tabs -> {
+                    closeAllIncognitoTabs()
                     true
                 }
                 R.id.menu_bookmark -> {
