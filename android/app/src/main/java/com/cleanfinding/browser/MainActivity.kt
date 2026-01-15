@@ -45,6 +45,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var downloadManager: DownloadManagerHelper
     private lateinit var preferencesManager: PreferencesManager
     private lateinit var privacyGradeCalculator: PrivacyGradeCalculator
+    private lateinit var privacyStatsManager: PrivacyStatsManager
 
     // Privacy tracking
     private var currentPageTrackersBlocked = 0
@@ -105,6 +106,7 @@ class MainActivity : AppCompatActivity() {
         downloadManager = DownloadManagerHelper(this)
         preferencesManager = PreferencesManager(this)
         privacyGradeCalculator = PrivacyGradeCalculator()
+        privacyStatsManager = PrivacyStatsManager(this)
 
         initViews()
         setupListeners()
@@ -1091,6 +1093,15 @@ class MainActivity : AppCompatActivity() {
         privacyGradeBadge.setOnClickListener {
             showPrivacyDetails(privacyScore)
         }
+
+        // Record privacy stats for dashboard
+        privacyStatsManager.recordPageStats(
+            url = url,
+            trackersBlocked = currentPageTrackersBlocked,
+            blockedDomains = currentPageBlockedDomains,
+            privacyGrade = privacyScore.grade,
+            isHttps = privacyScore.isHttps
+        )
     }
 
     private fun showPrivacyDetails(privacyScore: PrivacyGradeCalculator.PrivacyScore) {
