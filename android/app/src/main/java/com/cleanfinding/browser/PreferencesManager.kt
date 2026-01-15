@@ -36,6 +36,9 @@ class PreferencesManager(context: Context) {
         const val KEY_AUTO_DOWNLOAD = "auto_download"
         const val KEY_DOWNLOAD_WIFI_ONLY = "download_wifi_only"
 
+        // Security settings
+        const val KEY_BIOMETRIC_LOCK_INCOGNITO = "biometric_lock_incognito"
+
         // Default values
         const val DEFAULT_BLOCK_TRACKERS = true
         const val DEFAULT_BLOCK_ADS = true
@@ -52,6 +55,7 @@ class PreferencesManager(context: Context) {
         const val DEFAULT_CACHE_MODE = "normal"
         const val DEFAULT_AUTO_DOWNLOAD = false
         const val DEFAULT_DOWNLOAD_WIFI_ONLY = false
+        const val DEFAULT_BIOMETRIC_LOCK_INCOGNITO = false
     }
 
     // Privacy settings
@@ -102,6 +106,10 @@ class PreferencesManager(context: Context) {
 
     fun getDownloadWifiOnly(): Boolean = prefs.getBoolean(KEY_DOWNLOAD_WIFI_ONLY, DEFAULT_DOWNLOAD_WIFI_ONLY)
     fun setDownloadWifiOnly(enabled: Boolean) = prefs.edit().putBoolean(KEY_DOWNLOAD_WIFI_ONLY, enabled).apply()
+
+    // Security settings
+    fun getBiometricLockIncognito(): Boolean = prefs.getBoolean(KEY_BIOMETRIC_LOCK_INCOGNITO, DEFAULT_BIOMETRIC_LOCK_INCOGNITO)
+    fun setBiometricLockIncognito(enabled: Boolean) = prefs.edit().putBoolean(KEY_BIOMETRIC_LOCK_INCOGNITO, enabled).apply()
 
     /**
      * Register a listener for preference changes
