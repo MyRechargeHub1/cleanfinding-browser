@@ -37,6 +37,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var findPrevButton: ImageButton
     private lateinit var findNextButton: ImageButton
     private lateinit var findCloseButton: ImageButton
+    private lateinit var httpsIcon: TextView
+    private lateinit var privacyGradeBadge: TextView
 
     private lateinit var bookmarkManager: BookmarkManager
     private lateinit var historyManager: HistoryManager
@@ -130,6 +132,8 @@ class MainActivity : AppCompatActivity() {
         findPrevButton = findViewById(R.id.findPrevButton)
         findNextButton = findViewById(R.id.findNextButton)
         findCloseButton = findViewById(R.id.findCloseButton)
+        httpsIcon = findViewById(R.id.httpsIcon)
+        privacyGradeBadge = findViewById(R.id.privacyGradeBadge)
         customViewContainer = findViewById(R.id.customViewContainer)
     }
 
@@ -1065,18 +1069,38 @@ class MainActivity : AppCompatActivity() {
             blockedDomains = currentPageBlockedDomains
         )
 
-        // Display privacy information
-        if (currentPageTrackersBlocked > 0 || !privacyScore.isHttps) {
-            val emoji = privacyGradeCalculator.getGradeEmoji(privacyScore.grade)
-            val message = if (currentPageTrackersBlocked > 0) {
-                "$emoji Blocked $currentPageTrackersBlocked tracker${if (currentPageTrackersBlocked != 1) "s" else ""} • Grade: ${privacyScore.grade}"
-            } else {
-                "$emoji Privacy Grade: ${privacyScore.grade}"
-            }
-
-            // Show as toast for now (will be replaced with proper UI)
-            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        // Update HTTPS lock icon
+        if (privacyScore.isHttps) {
+            httpsIcon.visibility = View.VISIBLE
+        } else {
+            httpsIcon.visibility = View.GONE
         }
+
+        // Update privacy grade badge
+        privacyGradeBadge.visibility = View.VISIBLE
+        privacyGradeBadge.text = privacyScore.grade
+
+        // Set badge background color based on grade
+        val backgroundColor = android.graphics.Color.parseColor(privacyScore.color)
+        val drawable = privacyGradeBadge.background
+        if (drawable is android.graphics.drawable.GradientDrawable) {
+            drawable.setColor(backgroundColor)
+        }
+
+        // Make badge clickable to show details
+        privacyGradeBadge.setOnClickListener {
+            showPrivacyDetails(privacyScore)
+        }
+    }
+
+    private fun showPrivacyDetails(privacyScore: PrivacyGradeCalculator.PrivacyScore) {
+        val detailsReport = privacyGradeCalculator.getDetailedReport(privacyScore)
+
+        AlertDialog.Builder(this)
+            .setTitle("${privacyGradeCalculator.getGradeEmoji(privacyScore.grade)} Privacy Report")
+            .setMessage(detailsReport)
+            .setPositiveButton("OK", null)
+            .show()
     }
 
     @Deprecated("Deprecated in Java")
