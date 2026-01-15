@@ -46,6 +46,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var preferencesManager: PreferencesManager
     private lateinit var privacyGradeCalculator: PrivacyGradeCalculator
     private lateinit var privacyStatsManager: PrivacyStatsManager
+    private lateinit var cookieConsentHandler: CookieConsentHandler
+    private lateinit var gpcHandler: GlobalPrivacyControlHandler
 
     // Privacy tracking
     private var currentPageTrackersBlocked = 0
@@ -107,6 +109,8 @@ class MainActivity : AppCompatActivity() {
         preferencesManager = PreferencesManager(this)
         privacyGradeCalculator = PrivacyGradeCalculator()
         privacyStatsManager = PrivacyStatsManager(this)
+        cookieConsentHandler = CookieConsentHandler()
+        gpcHandler = GlobalPrivacyControlHandler()
 
         initViews()
         setupListeners()
@@ -261,6 +265,14 @@ class MainActivity : AppCompatActivity() {
                     updateNavigationButtons()
                     injectBlockingScript(view)
                     injectVideoFixCSS(view)
+
+                    // Auto-decline cookie consent banners
+                    cookieConsentHandler.injectAutoDeclineScript(view)
+                    cookieConsentHandler.injectConsentBannerHiding(view)
+
+                    // Enable Global Privacy Control (GPC)
+                    gpcHandler.injectGPCSignal(view)
+                    gpcHandler.monitorGPCViolations(view)
 
                     // Record page visit in history (if not incognito)
                     url?.let {
@@ -890,22 +902,126 @@ class MainActivity : AppCompatActivity() {
                     return originalFetch.apply(this, arguments);
                 };
 
+                // Enhanced ad blocking selectors
                 var adSelectors = [
+                    // Generic ad containers
                     '[class*="ad-"]', '[class*="ads-"]', '[id*="ad-"]', '[id*="ads-"]',
-                    '[class*="advertisement"]', '[class*="sponsored"]',
-                    'ins.adsbygoogle', '.google-ad', '.doubleclick-ad'
+                    '[class*="advertisement"]', '[class*="advert"]',
+                    '[class*="sponsored"]', '[class*="sponsor-"]',
+                    '[data-ad]', '[data-ads]', '[data-advertisement]',
+
+                    // Google Ads
+                    'ins.adsbygoogle', '.google-ad', '.doubleclick-ad',
+                    '#google_ads_iframe', '[id*="google_ads"]',
+                    '.ad-slot', '.ad-container', '.ad-banner',
+
+                    // Common ad networks
+                    '[class*="taboola"]', '[id*="taboola"]',
+                    '[class*="outbrain"]', '[id*="outbrain"]',
+                    '[class*="adsbymedia"]', '[id*="adsbymedia"]',
+
+                    // Sponsored content
+                    '[class*="promo"]', '[class*="promotional"]',
+                    'article[class*="sponsor"]', 'div[class*="sponsor"]',
+
+                    // Ad frames and iframes
+                    'iframe[src*="ads"]', 'iframe[src*="doubleclick"]',
+                    'iframe[src*="googlesyndication"]',
+
+                    // Native ads
+                    '[class*="native-ad"]', '[class*="native_ad"]',
+                    '[data-native-ad]', '[data-sponsored]',
+
+                    // Video ads
+                    '[class*="video-ad"]', '[class*="preroll"]',
+                    '[class*="midroll"]', '[class*="postroll"]'
                 ];
 
-                function removeAds() {
-                    adSelectors.forEach(function(selector) {
-                        document.querySelectorAll(selector).forEach(function(el) {
-                            el.style.display = 'none';
-                        });
-                    });
+                // Inject CSS for more aggressive ad blocking
+                var adBlockStyle = document.createElement('style');
+                adBlockStyle.id = 'cleanfinding-ad-block';
+                adBlockStyle.textContent = `
+                    /* Hide ad containers */
+                    [class*="ad-"], [class*="ads-"], [id*="ad-"], [id*="ads-"],
+                    [class*="advertisement"], [class*="sponsored"],
+                    ins.adsbygoogle, .google-ad, .doubleclick-ad {
+                        display: none !important;
+                        visibility: hidden !important;
+                        opacity: 0 !important;
+                        height: 0 !important;
+                        width: 0 !important;
+                        position: absolute !important;
+                        left: -9999px !important;
+                    }
+
+                    /* Remove ad placeholders */
+                    [data-ad], [data-ads], [data-advertisement] {
+                        display: none !important;
+                    }
+
+                    /* Hide Taboola and Outbrain */
+                    [class*="taboola"], [id*="taboola"],
+                    [class*="outbrain"], [id*="outbrain"] {
+                        display: none !important;
+                    }
+                `;
+
+                if (!document.getElementById('cleanfinding-ad-block')) {
+                    document.head.appendChild(adBlockStyle);
                 }
 
+                // Function to remove ads
+                function removeAds() {
+                    var removed = 0;
+                    adSelectors.forEach(function(selector) {
+                        try {
+                            document.querySelectorAll(selector).forEach(function(el) {
+                                if (el && el.parentNode) {
+                                    el.remove();
+                                    removed++;
+                                }
+                            });
+                        } catch (e) {
+                            // Continue with next selector
+                        }
+                    });
+                    if (removed > 0) {
+                        console.log('CleanFinding: Removed ' + removed + ' ad elements');
+                    }
+                }
+
+                // Remove ads immediately
                 removeAds();
+
+                // Continue removing ads periodically
                 setInterval(removeAds, 2000);
+
+                // Monitor for dynamically added ads
+                var adObserver = new MutationObserver(function(mutations) {
+                    var checkAds = false;
+                    mutations.forEach(function(mutation) {
+                        if (mutation.addedNodes.length) {
+                            mutation.addedNodes.forEach(function(node) {
+                                if (node.nodeType === 1) {
+                                    var nodeClass = (node.className || '').toString().toLowerCase();
+                                    var nodeId = (node.id || '').toLowerCase();
+                                    if (nodeClass.includes('ad') || nodeClass.includes('sponsor') ||
+                                        nodeId.includes('ad') || nodeId.includes('sponsor')) {
+                                        checkAds = true;
+                                    }
+                                }
+                            });
+                        }
+                    });
+                    if (checkAds) {
+                        setTimeout(removeAds, 100);
+                    }
+                });
+
+                adObserver.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
             })();
         """.trimIndent()
 
