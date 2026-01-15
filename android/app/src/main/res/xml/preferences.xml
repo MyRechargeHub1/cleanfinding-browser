@@ -38,6 +38,12 @@
             android:defaultValue="true" />
 
         <SwitchPreferenceCompat
+            android:key="duck_player"
+            android:title="🦆 Duck Player"
+            android:summary="Watch YouTube videos without tracking or ads"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
             android:key="biometric_lock_incognito"
             android:title="🔒 Biometric lock for incognito"
             android:summary="Require fingerprint or face unlock to access incognito tabs"

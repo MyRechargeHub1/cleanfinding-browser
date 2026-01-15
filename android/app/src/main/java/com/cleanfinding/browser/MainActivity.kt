@@ -49,6 +49,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var cookieConsentHandler: CookieConsentHandler
     private lateinit var gpcHandler: GlobalPrivacyControlHandler
     private lateinit var biometricAuthHelper: BiometricAuthHelper
+    private lateinit var duckPlayerHandler: DuckPlayerHandler
 
     // Privacy tracking
     private var currentPageTrackersBlocked = 0
@@ -113,6 +114,7 @@ class MainActivity : AppCompatActivity() {
         cookieConsentHandler = CookieConsentHandler()
         gpcHandler = GlobalPrivacyControlHandler()
         biometricAuthHelper = BiometricAuthHelper(this)
+        duckPlayerHandler = DuckPlayerHandler()
 
         initViews()
         setupListeners()
@@ -209,6 +211,15 @@ class MainActivity : AppCompatActivity() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url?.toString() ?: return false
 
+                // Check if Duck Player is enabled and this is a YouTube URL
+                if (preferencesManager.getDuckPlayer() && duckPlayerHandler.isYouTubeUrl(url)) {
+                    val privacyUrl = duckPlayerHandler.convertToPrivacyUrl(url)
+                    if (privacyUrl != null) {
+                        view?.loadUrl(privacyUrl)
+                        return true
+                    }
+                }
+
                 if (isBlockedUrl(url)) {
                     showBlockedMessage(url)
                     return true
@@ -275,6 +286,11 @@ class MainActivity : AppCompatActivity() {
                     // Enable Global Privacy Control (GPC)
                     gpcHandler.injectGPCSignal(view)
                     gpcHandler.monitorGPCViolations(view)
+
+                    // Apply Duck Player enhancements for YouTube
+                    if (preferencesManager.getDuckPlayer() && url?.let { duckPlayerHandler.isYouTubeUrl(it) } == true) {
+                        duckPlayerHandler.injectDuckPlayerEnhancements(view)
+                    }
 
                     // Record page visit in history (if not incognito)
                     url?.let {
@@ -899,6 +915,15 @@ class MainActivity : AppCompatActivity() {
         if (isBlockedUrl(url)) {
             showBlockedMessage(url)
             return
+        }
+
+        // Check if Duck Player is enabled and this is a YouTube URL
+        if (preferencesManager.getDuckPlayer() && duckPlayerHandler.isYouTubeUrl(url)) {
+            val privacyUrl = duckPlayerHandler.convertToPrivacyUrl(url)
+            if (privacyUrl != null) {
+                webView.loadUrl(privacyUrl)
+                return
+            }
         }
 
         url = enforceSafeSearch(url)
