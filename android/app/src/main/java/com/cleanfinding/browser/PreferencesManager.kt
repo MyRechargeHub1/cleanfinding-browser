@@ -20,6 +20,7 @@ class PreferencesManager(context: Context) {
         const val KEY_FORCE_HTTPS = "force_https"
         const val KEY_FORCE_SAFE_SEARCH = "force_safe_search"
         const val KEY_DUCK_PLAYER = "duck_player"
+        const val KEY_EMAIL_PROTECTION = "email_protection"
 
         // Appearance settings
         const val KEY_DARK_MODE = "dark_mode"
@@ -47,6 +48,7 @@ class PreferencesManager(context: Context) {
         const val DEFAULT_FORCE_HTTPS = true
         const val DEFAULT_FORCE_SAFE_SEARCH = true
         const val DEFAULT_DUCK_PLAYER = true
+        const val DEFAULT_EMAIL_PROTECTION = true
         const val DEFAULT_DARK_MODE = true
         const val DEFAULT_SHOW_IMAGES = true
         const val DEFAULT_TEXT_SIZE = 100
@@ -78,6 +80,9 @@ class PreferencesManager(context: Context) {
 
     fun getDuckPlayer(): Boolean = prefs.getBoolean(KEY_DUCK_PLAYER, DEFAULT_DUCK_PLAYER)
     fun setDuckPlayer(enabled: Boolean) = prefs.edit().putBoolean(KEY_DUCK_PLAYER, enabled).apply()
+
+    fun getEmailProtection(): Boolean = prefs.getBoolean(KEY_EMAIL_PROTECTION, DEFAULT_EMAIL_PROTECTION)
+    fun setEmailProtection(enabled: Boolean) = prefs.edit().putBoolean(KEY_EMAIL_PROTECTION, enabled).apply()
 
     // Appearance settings
     fun getDarkMode(): Boolean = prefs.getBoolean(KEY_DARK_MODE, DEFAULT_DARK_MODE)

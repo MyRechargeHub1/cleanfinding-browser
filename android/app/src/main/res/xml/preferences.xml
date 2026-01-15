@@ -44,6 +44,12 @@
             android:defaultValue="true" />
 
         <SwitchPreferenceCompat
+            android:key="email_protection"
+            android:title="📧 Email Protection"
+            android:summary="Block email tracking pixels and link trackers in webmail"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
             android:key="biometric_lock_incognito"
             android:title="🔒 Biometric lock for incognito"
             android:summary="Require fingerprint or face unlock to access incognito tabs"
