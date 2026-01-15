@@ -134,7 +134,7 @@
         <Preference
             android:key="version"
             android:title="Version"
-            android:summary="1.1.0-dev1"
+            android:summary="1.3.0"
             android:selectable="false" />
 
         <Preference
