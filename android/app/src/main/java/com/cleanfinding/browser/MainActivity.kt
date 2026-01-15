@@ -656,6 +656,10 @@ class MainActivity : AppCompatActivity() {
                     showDownloads()
                     true
                 }
+                R.id.menu_privacy_dashboard -> {
+                    showPrivacyDashboard()
+                    true
+                }
                 R.id.menu_find -> {
                     showFindBar()
                     true
@@ -733,6 +737,11 @@ class MainActivity : AppCompatActivity() {
     private fun showDownloads() {
         val intent = Intent(this, DownloadsActivity::class.java)
         startActivityForResult(intent, REQUEST_DOWNLOADS)
+    }
+
+    private fun showPrivacyDashboard() {
+        val intent = Intent(this, PrivacyDashboardActivity::class.java)
+        startActivity(intent)
     }
 
     private fun showSettings() {

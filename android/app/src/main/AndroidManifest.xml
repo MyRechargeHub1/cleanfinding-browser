@@ -54,6 +54,12 @@
             android:parentActivityName=".MainActivity"
             android:theme="@style/Theme.CleanFindingBrowser" />
 
+        <activity
+            android:name=".PrivacyDashboardActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity"
+            android:theme="@style/Theme.CleanFindingBrowser" />
+
     </application>
 
 </manifest>
