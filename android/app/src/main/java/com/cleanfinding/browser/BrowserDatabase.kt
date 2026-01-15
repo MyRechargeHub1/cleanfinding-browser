@@ -24,13 +24,13 @@ class Converters {
 
 /**
  * Room database for CleanFinding Browser
- * Contains history, downloads, and other persistent data
+ * Contains history, downloads, privacy stats, and other persistent data
  *
- * Database version 2 - Added Downloads support
+ * Database version 3 - Added Privacy Stats support
  */
 @Database(
-    entities = [HistoryItem::class, Download::class],
-    version = 2,
+    entities = [HistoryItem::class, Download::class, PrivacyStats::class],
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -45,6 +45,11 @@ abstract class BrowserDatabase : RoomDatabase() {
      * DAO for download operations
      */
     abstract fun downloadDao(): DownloadDao
+
+    /**
+     * DAO for privacy stats operations
+     */
+    abstract fun privacyStatsDao(): PrivacyStatsDao
 
     companion object {
         @Volatile

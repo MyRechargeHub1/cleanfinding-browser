@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#1a1a2e">
+
+    <!-- Top Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="#16213e"
+        android:elevation="4dp">
+
+        <ImageButton
+            android:id="@+id/backButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_back"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Back"
+            android:tint="@color/icon_tint"
+            android:layout_marginStart="8dp" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="🛡️ Privacy Dashboard"
+            android:textColor="@color/text_primary"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginStart="8dp" />
+
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Stats Cards Container -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:weightSum="3">
+
+                <!-- All-Time Card -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:background="@drawable/stats_card_background"
+                    android:padding="12dp"
+                    android:layout_marginEnd="4dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="All-Time"
+                        android:textColor="#9CA3AF"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/totalTrackersText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0"
+                        android:textColor="#4CAF50"
+                        android:textSize="24sp"
+                        android:textStyle="bold"
+                        android:layout_marginTop="4dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="blocked"
+                        android:textColor="#9CA3AF"
+                        android:textSize="10sp" />
+
+                </LinearLayout>
+
+                <!-- Today Card -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:background="@drawable/stats_card_background"
+                    android:padding="12dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Today"
+                        android:textColor="#9CA3AF"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/todayTrackersText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0"
+                        android:textColor="#4CAF50"
+                        android:textSize="24sp"
+                        android:textStyle="bold"
+                        android:layout_marginTop="4dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="blocked"
+                        android:textColor="#9CA3AF"
+                        android:textSize="10sp" />
+
+                </LinearLayout>
+
+                <!-- This Week Card -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:background="@drawable/stats_card_background"
+                    android:padding="12dp"
+                    android:layout_marginStart="4dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="This Week"
+                        android:textColor="#9CA3AF"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/weekTrackersText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0"
+                        android:textColor="#4CAF50"
+                        android:textSize="24sp"
+                        android:textStyle="bold"
+                        android:layout_marginTop="4dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="blocked"
+                        android:textColor="#9CA3AF"
+                        android:textSize="10sp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- Most Tracked Domains Section -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Most Tracked Websites"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="12dp" />
+
+            <LinearLayout
+                android:id="@+id/mostTrackedContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/stats_card_background"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/noDataText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="No tracking data yet. Browse some websites to see statistics."
+                    android:textColor="#9CA3AF"
+                    android:textSize="14sp"
+                    android:gravity="center"
+                    android:layout_gravity="center_horizontal"
+                    android:padding="20dp" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/mostTrackedRecyclerView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+
+            <!-- Privacy Grade Distribution Section -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Privacy Grade Distribution"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="12dp" />
+
+            <LinearLayout
+                android:id="@+id/gradeDistributionContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/stats_card_background"
+                android:padding="16dp" />
+
+        </LinearLayout>
+
+    </ScrollView>
+
+</LinearLayout>
