@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- History Item Content -->
+    <LinearLayout
+        android:id="@+id/historyItemLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:gravity="center_vertical">
+
+        <!-- Icon/Favicon -->
+        <TextView
+            android:id="@+id/faviconText"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:text="🌐"
+            android:textSize="24sp"
+            android:background="@drawable/tab_count_background"
+            android:layout_marginEnd="12dp" />
+
+        <!-- Title and URL -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/historyTitleText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Page Title"
+                android:textColor="#ffffff"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/historyUrlText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="https://example.com"
+                android:textColor="#888888"
+                android:textSize="14sp"
+                android:maxLines="1"
+                android:ellipsize="middle"
+                android:layout_marginTop="2dp" />
+
+            <TextView
+                android:id="@+id/historyTimeText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="5 minutes ago"
+                android:textColor="#666666"
+                android:textSize="12sp"
+                android:layout_marginTop="4dp" />
+
+        </LinearLayout>
+
+        <!-- Delete Button -->
+        <ImageButton
+            android:id="@+id/deleteButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_close"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Delete"
+            android:layout_marginStart="8dp"
+            app:tint="#888888" />
+
+    </LinearLayout>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#222233"
+        android:layout_marginStart="68dp" />
+
+</LinearLayout>

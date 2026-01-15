@@ -39,6 +39,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var findCloseButton: ImageButton
 
     private lateinit var bookmarkManager: BookmarkManager
+    private lateinit var historyManager: HistoryManager
 
     // Tab management
     private val tabs = mutableListOf<Tab>()
@@ -79,12 +80,17 @@ class MainActivity : AppCompatActivity() {
 
     private val homeUrl = "https://cleanfinding.com"
 
+    companion object {
+        private const val REQUEST_HISTORY = 1001
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         bookmarkManager = BookmarkManager(this)
+        historyManager = HistoryManager(this)
 
         initViews()
         setupListeners()
@@ -191,6 +197,13 @@ class MainActivity : AppCompatActivity() {
                     updateNavigationButtons()
                     injectBlockingScript(view)
                     injectVideoFixCSS(view)
+
+                    // Record page visit in history (if not incognito)
+                    url?.let {
+                        val title = view.title ?: ""
+                        val isIncognito = false // TODO: Update when incognito mode is implemented
+                        historyManager.recordVisit(it, title, isIncognito)
+                    }
                 }
             }
 
@@ -483,6 +496,10 @@ class MainActivity : AppCompatActivity() {
                     showBookmarks()
                     true
                 }
+                R.id.menu_history -> {
+                    showHistory()
+                    true
+                }
                 R.id.menu_find -> {
                     showFindBar()
                     true
@@ -550,6 +567,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         dialog.show()
+    }
+
+    private fun showHistory() {
+        val intent = Intent(this, HistoryActivity::class.java)
+        startActivityForResult(intent, REQUEST_HISTORY)
     }
 
     // Find in page
@@ -887,6 +909,21 @@ class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         intent?.data?.toString()?.let { loadUrl(it) }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        when (requestCode) {
+            REQUEST_HISTORY -> {
+                if (resultCode == RESULT_OK) {
+                    data?.getStringExtra("url")?.let { url ->
+                        loadUrl(url)
+                    }
+                }
+            }
+        }
     }
 
     override fun onDestroy() {
