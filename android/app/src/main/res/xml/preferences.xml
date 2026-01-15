@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- Privacy Settings Category -->
+    <PreferenceCategory
+        android:title="Privacy"
+        android:key="privacy_category">
+
+        <SwitchPreferenceCompat
+            android:key="block_trackers"
+            android:title="Block trackers"
+            android:summary="Block tracking scripts and pixels"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="block_ads"
+            android:title="Block advertisements"
+            android:summary="Block ads and sponsored content"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="block_adult_content"
+            android:title="Block adult content"
+            android:summary="Block adult websites and inappropriate content"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="force_https"
+            android:title="Force HTTPS"
+            android:summary="Always use secure connections when available"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="force_safe_search"
+            android:title="Force Safe Search"
+            android:summary="Enable Safe Search on all search engines"
+            android:defaultValue="true" />
+
+    </PreferenceCategory>
+
+    <!-- Appearance Settings Category -->
+    <PreferenceCategory
+        android:title="Appearance"
+        android:key="appearance_category">
+
+        <SwitchPreferenceCompat
+            android:key="dark_mode"
+            android:title="Dark mode"
+            android:summary="Use dark theme for the browser"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="show_images"
+            android:title="Show images"
+            android:summary="Load images on web pages"
+            android:defaultValue="true" />
+
+        <SeekBarPreference
+            android:key="text_size"
+            android:title="Text size"
+            android:summary="Adjust text size on web pages"
+            android:defaultValue="100"
+            android:max="200"
+            android:min="50"
+            app:showSeekBarValue="true"
+            app:updatesContinuously="true" />
+
+    </PreferenceCategory>
+
+    <!-- Advanced Settings Category -->
+    <PreferenceCategory
+        android:title="Advanced"
+        android:key="advanced_category">
+
+        <SwitchPreferenceCompat
+            android:key="javascript"
+            android:title="Enable JavaScript"
+            android:summary="Allow websites to run JavaScript (recommended)"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="cookies"
+            android:title="Enable cookies"
+            android:summary="Allow websites to store cookies"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="dom_storage"
+            android:title="Enable DOM storage"
+            android:summary="Allow websites to use local storage"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="location_access"
+            android:title="Location access"
+            android:summary="Allow websites to request your location"
+            android:defaultValue="false" />
+
+        <ListPreference
+            android:key="cache_mode"
+            android:title="Cache mode"
+            android:summary="Control how the browser uses cached content"
+            android:defaultValue="normal"
+            android:entries="@array/cache_mode_entries"
+            android:entryValues="@array/cache_mode_values" />
+
+    </PreferenceCategory>
+
+    <!-- Download Settings Category -->
+    <PreferenceCategory
+        android:title="Downloads"
+        android:key="downloads_category">
+
+        <SwitchPreferenceCompat
+            android:key="auto_download"
+            android:title="Auto-download"
+            android:summary="Automatically download files without asking"
+            android:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            android:key="download_wifi_only"
+            android:title="Download on Wi-Fi only"
+            android:summary="Only download files when connected to Wi-Fi"
+            android:defaultValue="false" />
+
+    </PreferenceCategory>
+
+    <!-- About Category -->
+    <PreferenceCategory
+        android:title="About"
+        android:key="about_category">
+
+        <Preference
+            android:key="version"
+            android:title="Version"
+            android:summary="1.1.0-dev1"
+            android:selectable="false" />
+
+        <Preference
+            android:key="privacy_policy"
+            android:title="Privacy Policy"
+            android:summary="View our privacy policy" />
+
+        <Preference
+            android:key="clear_data"
+            android:title="Clear all data"
+            android:summary="Clear history, cookies, cache, and settings" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

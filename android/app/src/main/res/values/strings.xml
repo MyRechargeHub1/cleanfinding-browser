@@ -1,3 +1,18 @@
 <resources>
     <string name="app_name">CleanFinding Browser</string>
+
+    <!-- Cache Mode Options -->
+    <string-array name="cache_mode_entries">
+        <item>Normal (recommended)</item>
+        <item>Prefer cache</item>
+        <item>No cache</item>
+        <item>Cache only</item>
+    </string-array>
+
+    <string-array name="cache_mode_values">
+        <item>normal</item>
+        <item>prefer_cache</item>
+        <item>no_cache</item>
+        <item>cache_only</item>
+    </string-array>
 </resources>

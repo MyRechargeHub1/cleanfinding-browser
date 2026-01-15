@@ -41,6 +41,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bookmarkManager: BookmarkManager
     private lateinit var historyManager: HistoryManager
     private lateinit var downloadManager: DownloadManagerHelper
+    private lateinit var preferencesManager: PreferencesManager
 
     // Tab management
     private val tabs = mutableListOf<Tab>()
@@ -84,6 +85,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val REQUEST_HISTORY = 1001
         private const val REQUEST_DOWNLOADS = 1002
+        private const val REQUEST_SETTINGS = 1003
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -94,6 +96,7 @@ class MainActivity : AppCompatActivity() {
         bookmarkManager = BookmarkManager(this)
         historyManager = HistoryManager(this)
         downloadManager = DownloadManagerHelper(this)
+        preferencesManager = PreferencesManager(this)
 
         initViews()
         setupListeners()
@@ -130,9 +133,10 @@ class MainActivity : AppCompatActivity() {
         wv.setLayerType(View.LAYER_TYPE_HARDWARE, null)
 
         wv.settings.apply {
-            javaScriptEnabled = true
-            domStorageEnabled = !isIncognito // Disable DOM storage in incognito
-            databaseEnabled = !isIncognito // Disable database in incognito
+            // Apply settings from preferences (or defaults for incognito)
+            javaScriptEnabled = if (isIncognito) true else preferencesManager.getJavaScriptEnabled()
+            domStorageEnabled = if (isIncognito) false else preferencesManager.getDomStorageEnabled()
+            databaseEnabled = if (isIncognito) false else preferencesManager.getDomStorageEnabled()
             setSupportZoom(true)
             builtInZoomControls = true
             displayZoomControls = false
@@ -143,11 +147,26 @@ class MainActivity : AppCompatActivity() {
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             safeBrowsingEnabled = true
 
-            // Incognito mode: disable cache and cookies
+            // Apply cache mode settings
             if (isIncognito) {
                 cacheMode = WebSettings.LOAD_NO_CACHE
                 setAppCacheEnabled(false)
+            } else {
+                cacheMode = when (preferencesManager.getCacheMode()) {
+                    "normal" -> WebSettings.LOAD_DEFAULT
+                    "prefer_cache" -> WebSettings.LOAD_CACHE_ELSE_NETWORK
+                    "no_cache" -> WebSettings.LOAD_NO_CACHE
+                    "cache_only" -> WebSettings.LOAD_CACHE_ONLY
+                    else -> WebSettings.LOAD_DEFAULT
+                }
             }
+
+            // Apply text size setting
+            textZoom = preferencesManager.getTextSize()
+
+            // Apply image loading setting
+            loadsImagesAutomatically = if (isIncognito) true else preferencesManager.getShowImages()
+            blockNetworkImage = if (isIncognito) false else !preferencesManager.getShowImages()
 
             // CRITICAL FIX: Enable video playback without user gesture
             mediaPlaybackRequiresUserGesture = false
@@ -157,8 +176,6 @@ class MainActivity : AppCompatActivity() {
 
             // CRITICAL FIX: Enable all media features
             javaScriptCanOpenWindowsAutomatically = false
-            loadsImagesAutomatically = true
-            blockNetworkImage = false
 
             // CRITICAL FIX: Set viewport meta tag support
             setSupportMultipleWindows(false)
@@ -295,11 +312,11 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Download started", Toast.LENGTH_SHORT).show()
         }
 
-        // Incognito mode: disable cookies
+        // Apply cookie settings
         if (isIncognito) {
             CookieManager.getInstance().setAcceptCookie(false)
         } else {
-            CookieManager.getInstance().setAcceptCookie(true)
+            CookieManager.getInstance().setAcceptCookie(preferencesManager.getCookiesEnabled())
         }
     }
 
@@ -609,7 +626,7 @@ class MainActivity : AppCompatActivity() {
                     true
                 }
                 R.id.menu_settings -> {
-                    Toast.makeText(this, "Settings coming soon", Toast.LENGTH_SHORT).show()
+                    showSettings()
                     true
                 }
                 else -> false
@@ -673,6 +690,11 @@ class MainActivity : AppCompatActivity() {
     private fun showDownloads() {
         val intent = Intent(this, DownloadsActivity::class.java)
         startActivityForResult(intent, REQUEST_DOWNLOADS)
+    }
+
+    private fun showSettings() {
+        val intent = Intent(this, SettingsActivity::class.java)
+        startActivityForResult(intent, REQUEST_SETTINGS)
     }
 
     // Find in page
@@ -1029,6 +1051,17 @@ class MainActivity : AppCompatActivity() {
                     data?.getStringExtra("url")?.let { url ->
                         loadUrl(url)
                     }
+                }
+            }
+            REQUEST_SETTINGS -> {
+                if (resultCode == RESULT_OK) {
+                    // Settings were changed, reload all WebViews with new settings
+                    tabWebViews.values.forEach { wv ->
+                        val tab = tabs.find { tabWebViews[it.id] == wv }
+                        setupWebView(wv, tab?.isIncognito ?: false)
+                    }
+                    webView.reload()
+                    Toast.makeText(this, "Settings applied", Toast.LENGTH_SHORT).show()
                 }
             }
         }
