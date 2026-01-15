@@ -10,6 +10,9 @@
         android:id="@+id/menu_bookmarks"
         android:title="Bookmarks" />
     <item
+        android:id="@+id/menu_history"
+        android:title="History" />
+    <item
         android:id="@+id/menu_find"
         android:title="Find in page" />
     <item
