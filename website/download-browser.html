@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Download CleanFinding Browser - Privacy-focused, family-safe browser for Android, Windows, macOS, and Linux. Advanced tracker blocking, Duck Player, and more.">
+    <meta name="keywords" content="privacy browser, family safe browser, tracker blocking, duck player, clean browser, safe browsing">
+    <title>Download CleanFinding Browser - Privacy-Focused Family-Safe Browser</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #4CAF50;
+            --primary-hover: #45a049;
+            --secondary-color: #2196F3;
+            --dark-bg: #1a1a1a;
+            --light-bg: #f8f9fa;
+            --text-dark: #333;
+            --text-light: #666;
+            --border-color: #e0e0e0;
+            --shadow: 0 4px 6px rgba(0,0,0,0.1);
+            --shadow-lg: 0 8px 16px rgba(0,0,0,0.15);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background: #fff;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #2e7d32 100%);
+            color: white;
+            padding: 80px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .header p {
+            font-size: 20px;
+            opacity: 0.95;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .version-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 20px;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Download Section */
+        .download-section {
+            padding: 60px 20px;
+            background: var(--light-bg);
+        }
+
+        .download-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .download-card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .download-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .download-card .icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .download-card h3 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .download-card .version {
+            color: var(--text-light);
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .download-card .size {
+            color: var(--text-light);
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+
+        .download-card .requirements {
+            font-size: 12px;
+            color: var(--text-light);
+            margin-bottom: 20px;
+            padding: 12px;
+            background: var(--light-bg);
+            border-radius: 8px;
+        }
+
+        .download-btn {
+            display: inline-block;
+            padding: 14px 32px;
+            background: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: background 0.3s;
+            margin-bottom: 12px;
+        }
+
+        .download-btn:hover {
+            background: var(--primary-hover);
+        }
+
+        .download-btn.secondary {
+            background: var(--secondary-color);
+        }
+
+        .download-btn.secondary:hover {
+            background: #1976D2;
+        }
+
+        .alternative-link {
+            display: block;
+            margin-top: 12px;
+            color: var(--secondary-color);
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .alternative-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Features Section */
+        .features-section {
+            padding: 60px 20px;
+        }
+
+        .features-section h2 {
+            font-size: 36px;
+            text-align: center;
+            margin-bottom: 48px;
+            color: var(--text-dark);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 32px;
+        }
+
+        .feature-card {
+            padding: 24px;
+            background: var(--light-bg);
+            border-radius: 12px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .feature-card h3 {
+            font-size: 20px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .feature-card .icon {
+            font-size: 24px;
+        }
+
+        .feature-card p {
+            color: var(--text-light);
+            line-height: 1.7;
+        }
+
+        .feature-card .new-badge {
+            display: inline-block;
+            background: var(--primary-color);
+            color: white;
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        /* Changelog Section */
+        .changelog-section {
+            padding: 60px 20px;
+            background: var(--light-bg);
+        }
+
+        .changelog-section h2 {
+            font-size: 36px;
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .changelog-item {
+            background: white;
+            padding: 32px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow);
+        }
+
+        .changelog-item h3 {
+            font-size: 24px;
+            color: var(--primary-color);
+            margin-bottom: 8px;
+        }
+
+        .changelog-item .date {
+            color: var(--text-light);
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .changelog-item h4 {
+            font-size: 18px;
+            margin-top: 20px;
+            margin-bottom: 12px;
+            color: var(--text-dark);
+        }
+
+        .changelog-item ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .changelog-item ul li {
+            padding: 8px 0;
+            padding-left: 28px;
+            position: relative;
+        }
+
+        .changelog-item ul li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        /* Platform Comparison */
+        .comparison-section {
+            padding: 60px 20px;
+        }
+
+        .comparison-section h2 {
+            font-size: 36px;
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .comparison-table {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+
+        .comparison-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .comparison-table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .comparison-table td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .comparison-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .comparison-table .check {
+            color: var(--primary-color);
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        /* FAQ Section */
+        .faq-section {
+            padding: 60px 20px;
+            background: var(--light-bg);
+        }
+
+        .faq-section h2 {
+            font-size: 36px;
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .faq-item {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow);
+        }
+
+        .faq-item h3 {
+            font-size: 18px;
+            margin-bottom: 12px;
+            color: var(--primary-color);
+        }
+
+        .faq-item p {
+            color: var(--text-light);
+            line-height: 1.7;
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--dark-bg);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 32px;
+            }
+
+            .header p {
+                font-size: 16px;
+            }
+
+            .features-section h2,
+            .changelog-section h2,
+            .comparison-section h2,
+            .faq-section h2 {
+                font-size: 28px;
+            }
+
+            .download-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .comparison-table {
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="container">
+            <h1>🛡️ CleanFinding Browser</h1>
+            <p>Privacy-focused, family-safe browser with advanced tracker blocking and content protection</p>
+            <span class="version-badge">Latest Version: 1.4.0</span>
+        </div>
+    </div>
+
+    <!-- Download Section -->
+    <div class="download-section">
+        <div class="container">
+            <h2 style="text-align: center; font-size: 36px; margin-bottom: 20px;">Download Now</h2>
+            <p style="text-align: center; color: var(--text-light); max-width: 600px; margin: 0 auto 40px;">
+                Available for Android, Windows, macOS, and Linux. Choose your platform below.
+            </p>
+
+            <div class="download-grid">
+                <!-- Android -->
+                <div class="download-card">
+                    <div class="icon">🤖</div>
+                    <h3>Android</h3>
+                    <div class="version">Version 1.4.0</div>
+                    <div class="size">~8 MB</div>
+                    <div class="requirements">
+                        Android 8.0 (Oreo) or later<br>
+                        ARM, ARM64, x86, x86_64
+                    </div>
+                    <a href="#" class="download-btn">Download APK</a>
+                    <a href="#" class="alternative-link">Get on Google Play →</a>
+                </div>
+
+                <!-- Windows -->
+                <div class="download-card">
+                    <div class="icon">🪟</div>
+                    <h3>Windows</h3>
+                    <div class="version">Version 1.4.0</div>
+                    <div class="size">~73 MB</div>
+                    <div class="requirements">
+                        Windows 10/11 (64-bit)<br>
+                        Intel/AMD x64 processor
+                    </div>
+                    <a href="#" class="download-btn">Download Installer</a>
+                    <a href="#" class="alternative-link">Download Portable →</a>
+                </div>
+
+                <!-- macOS -->
+                <div class="download-card">
+                    <div class="icon">🍎</div>
+                    <h3>macOS</h3>
+                    <div class="version">Version 1.4.0</div>
+                    <div class="size">~89 MB</div>
+                    <div class="requirements">
+                        macOS 10.13 or later<br>
+                        Intel & Apple Silicon (M1/M2)
+                    </div>
+                    <a href="#" class="download-btn">Download DMG</a>
+                    <a href="#" class="alternative-link">Download ZIP →</a>
+                </div>
+
+                <!-- Linux -->
+                <div class="download-card">
+                    <div class="icon">🐧</div>
+                    <h3>Linux</h3>
+                    <div class="version">Version 1.4.0</div>
+                    <div class="size">~99 MB</div>
+                    <div class="requirements">
+                        Ubuntu 18.04+ / Debian / Fedora<br>
+                        64-bit (x86_64)
+                    </div>
+                    <a href="#" class="download-btn">Download AppImage</a>
+                    <a href="#" class="alternative-link">Download DEB →</a>
+                    <a href="#" class="alternative-link">Download RPM →</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <div class="features-section">
+        <div class="container">
+            <h2>🎯 Privacy Features</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>
+                        <span class="icon">🚫</span>
+                        Advanced Tracker Blocking
+                        <span class="new-badge">NEW</span>
+                    </h3>
+                    <p>
+                        Automatically blocks known trackers, analytics scripts, and third-party cookies.
+                        Network-level blocking prevents tracking before it happens, protecting your browsing
+                        privacy across all websites.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>
+                        <span class="icon">🦆</span>
+                        Duck Player
+                        <span class="new-badge">NEW</span>
+                    </h3>
+                    <p>
+                        Watch YouTube videos with enhanced privacy protection. Automatically redirects to
+                        youtube-nocookie.com, removes tracking parameters, blocks recommendations, and
+                        prevents Google from tracking your viewing habits.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>
+                        <span class="icon">📧</span>
+                        Email Protection
+                        <span class="new-badge">NEW</span>
+                    </h3>
+                    <p>
+                        Blocks email tracking pixels and link trackers in Gmail, Outlook, Yahoo Mail, and
+                        ProtonMail. Prevents senders from knowing when you open emails or click links,
+                        maintaining your email privacy.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>
+                        <span class="icon">🍪</span>
+                        Cookie Auto-Decline
+                        <span class="new-badge">NEW</span>
+                    </h3>
+                    <p>
+                        Automatically detects and declines cookie consent banners on websites. Saves time
+                        and protects privacy by refusing tracking cookies while accepting only essential
+                        functionality cookies.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>
+                        <span class="icon">🔒</span>
+                        Biometric Lock
+                        <span class="new-badge">NEW</span>
+                    </h3>
+                    <p>
+                        Protect your private browsing with fingerprint or face authentication. Incognito
+                        tabs require biometric unlock, adding an extra layer of security to your sensitive
+                        browsing sessions. (Android: Fingerprint/Face, Desktop: Platform-specific)
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>
+                        <span class="icon">🌐</span>
+                        Global Privacy Control (GPC)
+                        <span class="new-badge">NEW</span>
+                    </h3>
+                    <p>
+                        Automatically sends "Do Not Sell My Data" signals to websites you visit. Legally
+                        binding under CCPA and GDPR, telling websites not to sell or share your personal
+                        information with third parties.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>
+                        <span class="icon">📊</span>
+                        Privacy Dashboard
+                    </h3>
+                    <p>
+                        Real-time statistics showing trackers blocked, cookies declined, and privacy grade
+                        for each website. Transparent insights into how your privacy is being protected
+                        as you browse.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>
+                        <span class="icon">🎭</span>
+                        Incognito Mode
+                    </h3>
+                    <p>
+                        Browse privately without saving history, cookies, or site data. Enhanced with
+                        optional biometric lock for additional security. Perfect for sensitive browsing
+                        sessions.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>
+                        <span class="icon">⚡</span>
+                        Fast & Lightweight
+                    </h3>
+                    <p>
+                        Optimized performance with minimal resource usage. Blocking trackers and ads makes
+                        pages load faster while using less data and battery. Efficient architecture ensures
+                        smooth browsing on any device.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>
+                        <span class="icon">👨‍👩‍👧‍👦</span>
+                        Family Safe
+                    </h3>
+                    <p>
+                        Built-in content filtering and safe browsing features protect your family from
+                        inappropriate content. Clean search results and blocking of malicious websites
+                        create a safer internet experience.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>
+                        <span class="icon">🔐</span>
+                        Enhanced Security
+                    </h3>
+                    <p>
+                        Content Security Policy enforcement, URL scheme validation, and sandbox mode protect
+                        against XSS attacks, malicious scripts, and security vulnerabilities. Browse with
+                        confidence knowing you're protected.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>
+                        <span class="icon">⚙️</span>
+                        Customizable Settings
+                    </h3>
+                    <p>
+                        Full control over privacy features. Enable or disable specific protections,
+                        customize appearance, and tailor the browser to your preferences. Your browser,
+                        your rules.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Platform Comparison -->
+    <div class="comparison-section">
+        <div class="container">
+            <h2>📱 Platform Feature Comparison</h2>
+            <div class="comparison-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th>Android</th>
+                            <th>Windows</th>
+                            <th>macOS</th>
+                            <th>Linux</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Tracker Blocking</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                        </tr>
+                        <tr>
+                            <td>Duck Player (YouTube Privacy)</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                        </tr>
+                        <tr>
+                            <td>Email Protection</td>
+                            <td class="check">✓</td>
+                            <td>Planned</td>
+                            <td>Planned</td>
+                            <td>Planned</td>
+                        </tr>
+                        <tr>
+                            <td>Cookie Auto-Decline</td>
+                            <td class="check">✓</td>
+                            <td>Planned</td>
+                            <td>Planned</td>
+                            <td>Planned</td>
+                        </tr>
+                        <tr>
+                            <td>Global Privacy Control (GPC)</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                        </tr>
+                        <tr>
+                            <td>Biometric Lock</td>
+                            <td class="check">✓</td>
+                            <td>Planned</td>
+                            <td>Planned</td>
+                            <td>Password</td>
+                        </tr>
+                        <tr>
+                            <td>Privacy Dashboard</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                        </tr>
+                        <tr>
+                            <td>Incognito Mode</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                        </tr>
+                        <tr>
+                            <td>Download Manager</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                        </tr>
+                        <tr>
+                            <td>Bookmarks</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                        </tr>
+                        <tr>
+                            <td>History</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                        </tr>
+                        <tr>
+                            <td>Multiple Tabs</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Changelog Section -->
+    <div class="changelog-section">
+        <div class="container">
+            <h2>📋 Version History</h2>
+
+            <!-- Version 1.4.0 -->
+            <div class="changelog-item">
+                <h3>Version 1.4.0</h3>
+                <div class="date">Released: January 16, 2024</div>
+
+                <h4>🎉 Major New Features</h4>
+                <ul>
+                    <li><strong>Duck Player (YouTube Privacy):</strong> Watch YouTube videos with enhanced privacy protection via youtube-nocookie.com</li>
+                    <li><strong>Email Protection:</strong> Block tracking pixels and link trackers in Gmail, Outlook, Yahoo Mail, and ProtonMail</li>
+                    <li><strong>Biometric Lock:</strong> Fingerprint/face authentication for incognito tabs (Android)</li>
+                    <li><strong>Cookie Auto-Decline:</strong> Automatically decline cookie consent banners</li>
+                    <li><strong>Global Privacy Control (GPC):</strong> Send "Do Not Sell My Data" signals to websites</li>
+                    <li><strong>Desktop Browser Release:</strong> Windows, macOS, and Linux versions now available</li>
+                </ul>
+
+                <h4>🔒 Security & Privacy Enhancements</h4>
+                <ul>
+                    <li>Fixed critical JavaScript injection vulnerability with proper input escaping</li>
+                    <li>Added URL scheme validation to block javascript:, data:, and file: schemes</li>
+                    <li>Implemented Content Security Policy for renderer processes (Desktop)</li>
+                    <li>Enhanced tracker blocking with network-level filtering</li>
+                    <li>Privacy dashboard with real-time statistics</li>
+                    <li>Privacy grade indicator (A+ to F) for each website</li>
+                </ul>
+
+                <h4>🐛 Bug Fixes</h4>
+                <ul>
+                    <li>Fixed BroadcastReceiver memory leak in download manager</li>
+                    <li>Fixed WebView cleanup to prevent memory leaks in tab management</li>
+                    <li>Fixed uncancelled Coroutine scopes causing background task leaks</li>
+                    <li>Fixed custom view callbacks not being properly released</li>
+                    <li>Improved error handling for network requests</li>
+                </ul>
+
+                <h4>⚡ Performance Improvements</h4>
+                <ul>
+                    <li>Optimized tracker blocking for faster page loads</li>
+                    <li>Reduced memory usage with proper resource cleanup</li>
+                    <li>Faster tab switching with improved WebView management</li>
+                    <li>Better battery efficiency with optimized background tasks</li>
+                </ul>
+
+                <h4>🎨 UI/UX Improvements</h4>
+                <ul>
+                    <li>Redesigned settings interface with categorized options</li>
+                    <li>Added privacy dashboard modal with statistics</li>
+                    <li>Improved tab management UI with incognito indicators</li>
+                    <li>Enhanced address bar with privacy grade display</li>
+                    <li>Modern, clean UI for desktop applications</li>
+                </ul>
+
+                <h4>🌐 Platform Support</h4>
+                <ul>
+                    <li><strong>Android:</strong> Version 1.4.0 (Android 8.0+)</li>
+                    <li><strong>Windows:</strong> Version 1.4.0 (Windows 10/11 64-bit)</li>
+                    <li><strong>macOS:</strong> Version 1.4.0 (macOS 10.13+, Intel & Apple Silicon)</li>
+                    <li><strong>Linux:</strong> Version 1.4.0 (Ubuntu 18.04+, Debian, Fedora)</li>
+                </ul>
+            </div>
+
+            <!-- Version 1.3.0 -->
+            <div class="changelog-item">
+                <h3>Version 1.3.0</h3>
+                <div class="date">Released: December 2023</div>
+
+                <h4>✨ New Features</h4>
+                <ul>
+                    <li>Enhanced tracker blocking with expanded domain list</li>
+                    <li>Improved download manager with progress notifications</li>
+                    <li>Added history search functionality</li>
+                    <li>Bookmark organization and folders</li>
+                </ul>
+
+                <h4>🔧 Improvements</h4>
+                <ul>
+                    <li>Faster page rendering</li>
+                    <li>Better memory management</li>
+                    <li>Improved stability</li>
+                </ul>
+            </div>
+
+            <!-- Version 1.2.0 -->
+            <div class="changelog-item">
+                <h3>Version 1.2.0</h3>
+                <div class="date">Released: November 2023</div>
+
+                <h4>✨ New Features</h4>
+                <ul>
+                    <li>Incognito mode for private browsing</li>
+                    <li>Download manager</li>
+                    <li>Bookmark support</li>
+                    <li>Multiple tab management</li>
+                </ul>
+
+                <h4>🔧 Improvements</h4>
+                <ul>
+                    <li>Enhanced privacy protection</li>
+                    <li>Improved user interface</li>
+                    <li>Better performance</li>
+                </ul>
+            </div>
+
+            <!-- Version 1.1.0 -->
+            <div class="changelog-item">
+                <h3>Version 1.1.0</h3>
+                <div class="date">Released: October 2023</div>
+
+                <h4>✨ New Features</h4>
+                <ul>
+                    <li>Basic tracker blocking</li>
+                    <li>Search functionality</li>
+                    <li>Settings page</li>
+                </ul>
+
+                <h4>🐛 Bug Fixes</h4>
+                <ul>
+                    <li>Fixed navigation issues</li>
+                    <li>Improved stability</li>
+                </ul>
+            </div>
+
+            <!-- Version 1.0.0 -->
+            <div class="changelog-item">
+                <h3>Version 1.0.0</h3>
+                <div class="date">Released: September 2023</div>
+
+                <h4>🎉 Initial Release</h4>
+                <ul>
+                    <li>Basic web browsing functionality</li>
+                    <li>Privacy-focused design</li>
+                    <li>Clean, simple interface</li>
+                    <li>Android support</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- FAQ Section -->
+    <div class="faq-section">
+        <div class="container">
+            <h2>❓ Frequently Asked Questions</h2>
+
+            <div class="faq-item">
+                <h3>Is CleanFinding Browser really free?</h3>
+                <p>
+                    Yes! CleanFinding Browser is completely free to download and use. There are no ads,
+                    no subscriptions, and no hidden costs. We believe privacy should be accessible to everyone.
+                </p>
+            </div>
+
+            <div class="faq-item">
+                <h3>How does CleanFinding Browser protect my privacy?</h3>
+                <p>
+                    CleanFinding Browser uses multiple layers of protection: network-level tracker blocking,
+                    automatic cookie consent declining, Global Privacy Control (GPC) signals, and privacy-enhanced
+                    features like Duck Player for YouTube. We block tracking before it happens and never collect
+                    your browsing data.
+                </p>
+            </div>
+
+            <div class="faq-item">
+                <h3>What is Duck Player?</h3>
+                <p>
+                    Duck Player is our YouTube privacy feature that redirects videos to youtube-nocookie.com,
+                    removes tracking parameters, blocks recommendations, and prevents Google from tracking your
+                    viewing habits. You can watch YouTube videos privately without being tracked.
+                </p>
+            </div>
+
+            <div class="faq-item">
+                <h3>Does CleanFinding Browser work on all platforms?</h3>
+                <p>
+                    Yes! CleanFinding Browser is available for Android (8.0+), Windows (10/11 64-bit),
+                    macOS (10.13+), and Linux (Ubuntu 18.04+). We're working on iOS support as well.
+                </p>
+            </div>
+
+            <div class="faq-item">
+                <h3>Can I import my bookmarks from other browsers?</h3>
+                <p>
+                    Currently, bookmark import is in development. For now, you can manually add your favorite
+                    sites. We're working on automatic import from Chrome, Firefox, Safari, and Edge.
+                </p>
+            </div>
+
+            <div class="faq-item">
+                <h3>Is CleanFinding Browser safe for children?</h3>
+                <p>
+                    Yes! CleanFinding Browser includes family-safe browsing features with content filtering
+                    and safe search. We block inappropriate content and malicious websites to create a safer
+                    browsing experience for all ages.
+                </p>
+            </div>
+
+            <div class="faq-item">
+                <h3>How do I enable biometric lock?</h3>
+                <p>
+                    On Android, go to Settings > Security > Biometric Lock and toggle it on. Your device must
+                    support fingerprint or face recognition. Desktop biometric support (Windows Hello, Touch ID)
+                    is coming soon.
+                </p>
+            </div>
+
+            <div class="faq-item">
+                <h3>Does blocking trackers make websites load faster?</h3>
+                <p>
+                    Yes! Blocking trackers, ads, and third-party scripts significantly reduces the amount of
+                    data loaded per page. This makes websites load faster, uses less bandwidth, and saves
+                    battery life on mobile devices.
+                </p>
+            </div>
+
+            <div class="faq-item">
+                <h3>Can I disable specific privacy features?</h3>
+                <p>
+                    Absolutely! You have full control over all privacy features. Go to Settings to enable
+                    or disable tracker blocking, Duck Player, email protection, cookie auto-decline, and
+                    other features individually.
+                </p>
+            </div>
+
+            <div class="faq-item">
+                <h3>How often is CleanFinding Browser updated?</h3>
+                <p>
+                    We release updates regularly with new features, bug fixes, and security improvements.
+                    Major updates (like 1.4.0) come every few months, with minor updates and patches as needed.
+                </p>
+            </div>
+
+            <div class="faq-item">
+                <h3>Where can I report bugs or request features?</h3>
+                <p>
+                    Visit our GitHub repository at
+                    <a href="https://github.com/MyRechargeHub1/cleanfinding-browser" target="_blank">
+                        github.com/MyRechargeHub1/cleanfinding-browser
+                    </a>
+                    to report issues or request features. You can also contact us at support@cleanfinding.com.
+                </p>
+            </div>
+
+            <div class="faq-item">
+                <h3>Is my browsing history stored anywhere?</h3>
+                <p>
+                    Your browsing history is stored locally on your device only. We never send your history
+                    to our servers or third parties. You can clear your history at any time from Settings >
+                    Clear Browsing Data. In incognito mode, no history is saved at all.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <div class="container">
+            <p>
+                <strong>CleanFinding Browser</strong> - Built with privacy by default
+            </p>
+            <p style="margin-top: 12px;">
+                <a href="https://cleanfinding.com">Home</a> •
+                <a href="https://cleanfinding.com/privacy">Privacy Policy</a> •
+                <a href="https://github.com/MyRechargeHub1/cleanfinding-browser">GitHub</a> •
+                <a href="mailto:support@cleanfinding.com">Support</a>
+            </p>
+            <p style="margin-top: 20px; font-size: 14px; opacity: 0.7;">
+                © 2024 CleanFinding Browser Team. All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
