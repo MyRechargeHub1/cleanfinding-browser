@@ -197,7 +197,7 @@ class MainActivity : AppCompatActivity() {
             // Apply cache mode settings
             if (isIncognito) {
                 cacheMode = WebSettings.LOAD_NO_CACHE
-                setAppCacheEnabled(false)
+                // Note: setAppCacheEnabled() was removed from Android API
             } else {
                 cacheMode = when (preferencesManager.getCacheMode()) {
                     "normal" -> WebSettings.LOAD_DEFAULT
