@@ -15,12 +15,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.cancel
+import java.io.Closeable
 
 /**
  * Manager class for handling download operations
  * Uses Android DownloadManager API + Room database for tracking
+ *
+ * IMPORTANT: Call cleanup() or close() when done to prevent memory leaks
  */
-class DownloadManagerHelper(private val context: Context) {
+class DownloadManagerHelper(private val context: Context) : Closeable {
 
     private val database = BrowserDatabase.getDatabase(context)
     private val downloadDao = database.downloadDao()
@@ -351,7 +355,8 @@ class DownloadManagerHelper(private val context: Context) {
     }
 
     /**
-     * Unregister broadcast receiver (call when no longer needed)
+     * Unregister broadcast receiver and cancel coroutine scope
+     * CRITICAL: Must be called to prevent memory leaks
      */
     fun cleanup() {
         try {
@@ -359,6 +364,16 @@ class DownloadManagerHelper(private val context: Context) {
         } catch (e: Exception) {
             // Receiver might not be registered
         }
+        // Cancel coroutine scope to prevent leaks
+        scope.cancel()
+    }
+
+    /**
+     * Implementation of Closeable interface
+     * Calls cleanup() to release resources
+     */
+    override fun close() {
+        cleanup()
     }
 
     /**

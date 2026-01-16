@@ -6,12 +6,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.cancel
+import java.io.Closeable
 
 /**
  * Manager class for handling browsing history operations
  * Provides a simplified API for history management
+ *
+ * IMPORTANT: Call cleanup() or close() when done to prevent memory leaks
  */
-class HistoryManager(context: Context) {
+class HistoryManager(context: Context) : Closeable {
 
     private val database = BrowserDatabase.getDatabase(context)
     private val historyDao = database.historyDao()
@@ -187,5 +191,21 @@ class HistoryManager(context: Context) {
      */
     fun deleteLastMonth(onComplete: ((Int) -> Unit)? = null) {
         deleteHistoryBefore(TimePeriod.getTimestampBefore(TimePeriod.LAST_MONTH), onComplete)
+    }
+
+    /**
+     * Cancel coroutine scope to prevent memory leaks
+     * CRITICAL: Must be called when HistoryManager is no longer needed
+     */
+    fun cleanup() {
+        scope.cancel()
+    }
+
+    /**
+     * Implementation of Closeable interface
+     * Calls cleanup() to release resources
+     */
+    override fun close() {
+        cleanup()
     }
 }
