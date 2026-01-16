@@ -180,10 +180,11 @@ class MainActivity : AppCompatActivity() {
         wv.setLayerType(View.LAYER_TYPE_HARDWARE, null)
 
         wv.settings.apply {
-            // Apply settings from preferences (or defaults for incognito)
-            javaScriptEnabled = if (isIncognito) true else preferencesManager.getJavaScriptEnabled()
-            domStorageEnabled = if (isIncognito) false else preferencesManager.getDomStorageEnabled()
-            databaseEnabled = if (isIncognito) false else preferencesManager.getDomStorageEnabled()
+            // CRITICAL: Always enable JavaScript and DOM storage for search to work
+            // Modern websites (including cleanfinding.com search) require these features
+            javaScriptEnabled = true
+            domStorageEnabled = !isIncognito  // Enable DOM storage unless in incognito mode
+            databaseEnabled = !isIncognito  // Enable database unless in incognito mode
             setSupportZoom(true)
             builtInZoomControls = true
             displayZoomControls = false
