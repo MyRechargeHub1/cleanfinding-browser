@@ -34,8 +34,8 @@ jobs:
         run: ./gradlew assembleDebug
         working-directory: ./android
 
-      - name: Build Release Bundle (AAB) for Play Store
-        run: ./gradlew bundleRelease
+      - name: Build Release APK (unsigned - for sideloading)
+        run: ./gradlew assembleRelease
         working-directory: ./android
 
       - name: Get version
@@ -58,11 +58,11 @@ jobs:
           path: android/app/build/outputs/apk/debug/*.apk
           retention-days: 5
 
-      - name: Upload AAB artifact
+      - name: Upload Release APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: android-aab
-          path: android/app/build/outputs/bundle/release/*.aab
+          name: android-release-apk
+          path: android/app/build/outputs/apk/release/*.apk
           retention-days: 5
 
   create-release:
@@ -117,8 +117,8 @@ jobs:
             - ⚡ Hardware-accelerated video playback
 
             ### Download
-            - **APK**: Direct install on Android devices (debug-signed for easy installation)
-            - **AAB**: For Google Play Store upload
+            - **Debug APK**: Debug-signed for easy installation and testing
+            - **Release APK**: Unsigned release version for sideloading
 
             ### Installation
             1. Download the APK file below
@@ -132,5 +132,6 @@ jobs:
           prerelease: false
           files: |
             dist/android-apk/*.apk
+            dist/android-release-apk/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
