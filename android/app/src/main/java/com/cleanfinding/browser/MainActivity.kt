@@ -426,6 +426,14 @@ class MainActivity : AppCompatActivity() {
                 customViewCallback?.onCustomViewHidden()
                 customViewCallback = null
             }
+
+            // Log JavaScript console messages for debugging
+            override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
+                consoleMessage?.let {
+                    android.util.Log.d("WebView", "${it.message()} -- From line ${it.lineNumber()} of ${it.sourceId()}")
+                }
+                return super.onConsoleMessage(consoleMessage)
+            }
         }
 
         // Download listener
