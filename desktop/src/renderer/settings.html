@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+    <title>Settings - CleanFinding Browser</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #4CAF50;
+            --bg-color: #ffffff;
+            --section-bg: #f8f9fa;
+            --border-color: #ddd;
+            --text-color: #333;
+            --text-secondary: #666;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+        }
+
+        .section {
+            background: var(--section-bg);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .section h2 {
+            font-size: 20px;
+            margin-bottom: 16px;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .setting-item:last-child {
+            border-bottom: none;
+        }
+
+        .setting-info {
+            flex: 1;
+        }
+
+        .setting-title {
+            font-size: 15px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .setting-description {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .setting-control {
+            margin-left: 20px;
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            width: 48px;
+            height: 28px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.3s;
+            border-radius: 28px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background-color: var(--primary-color);
+        }
+
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(20px);
+        }
+
+        /* Select Dropdown */
+        .select-box {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: white;
+            font-size: 14px;
+            cursor: pointer;
+            min-width: 120px;
+        }
+
+        /* Button */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            background: var(--primary-color);
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .version-info {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin-top: 32px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .save-notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--primary-color);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            display: none;
+            animation: slideIn 0.3s;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Settings</h1>
+    <p class="subtitle">Customize your CleanFinding Browser experience</p>
+
+    <!-- Privacy Settings -->
+    <div class="section">
+        <h2>Privacy</h2>
+
+        <div class="setting-item">
+            <div class="setting-info">
+                <div class="setting-title">Tracker Blocking</div>
+                <div class="setting-description">
+                    Block known trackers and analytics scripts from websites
+                </div>
+            </div>
+            <div class="setting-control">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="tracker-blocking" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="setting-item">
+            <div class="setting-info">
+                <div class="setting-title">Duck Player</div>
+                <div class="setting-description">
+                    Watch YouTube videos with privacy protection and without tracking
+                </div>
+            </div>
+            <div class="setting-control">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="duck-player" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="setting-item">
+            <div class="setting-info">
+                <div class="setting-title">Email Protection</div>
+                <div class="setting-description">
+                    Block email tracking pixels and link trackers in webmail
+                </div>
+            </div>
+            <div class="setting-control">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="email-protection" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="setting-item">
+            <div class="setting-info">
+                <div class="setting-title">Cookie Auto-Decline</div>
+                <div class="setting-description">
+                    Automatically decline cookie consent banners
+                </div>
+            </div>
+            <div class="setting-control">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="cookie-auto-decline" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="setting-item">
+            <div class="setting-info">
+                <div class="setting-title">Global Privacy Control (GPC)</div>
+                <div class="setting-description">
+                    Send "Do Not Sell My Data" signal to websites
+                </div>
+            </div>
+            <div class="setting-control">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="global-privacy-control" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Appearance Settings -->
+    <div class="section">
+        <h2>Appearance</h2>
+
+        <div class="setting-item">
+            <div class="setting-info">
+                <div class="setting-title">Theme</div>
+                <div class="setting-description">
+                    Choose your preferred browser theme
+                </div>
+            </div>
+            <div class="setting-control">
+                <select class="select-box" id="theme">
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                    <option value="system">System</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security Settings -->
+    <div class="section">
+        <h2>Security</h2>
+
+        <div class="setting-item">
+            <div class="setting-info">
+                <div class="setting-title">Biometric Lock</div>
+                <div class="setting-description">
+                    Require biometric authentication for incognito tabs (platform support varies)
+                </div>
+            </div>
+            <div class="setting-control">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="biometric-lock">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Management -->
+    <div class="section">
+        <h2>Data Management</h2>
+
+        <div class="setting-item">
+            <div class="setting-info">
+                <div class="setting-title">Clear Browsing Data</div>
+                <div class="setting-description">
+                    Remove cached files, cookies, and browsing history
+                </div>
+            </div>
+            <div class="setting-control">
+                <button class="btn btn-secondary" id="clear-data-btn">Clear Data</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="version-info">
+        CleanFinding Browser v1.4.0<br>
+        Built with privacy by default
+    </div>
+
+    <div class="save-notification" id="save-notification">
+        Settings saved successfully
+    </div>
+
+    <script>
+        // Load settings on page load
+        let settings = {};
+
+        async function loadSettings() {
+            settings = await window.cleanfindingAPI.getSettings();
+
+            // Apply settings to UI
+            document.getElementById('tracker-blocking').checked = settings.privacy?.trackerBlocking ?? true;
+            document.getElementById('duck-player').checked = settings.privacy?.duckPlayer ?? true;
+            document.getElementById('email-protection').checked = settings.privacy?.emailProtection ?? true;
+            document.getElementById('cookie-auto-decline').checked = settings.privacy?.cookieAutoDecline ?? true;
+            document.getElementById('global-privacy-control').checked = settings.privacy?.globalPrivacyControl ?? true;
+            document.getElementById('theme').value = settings.appearance?.theme ?? 'light';
+            document.getElementById('biometric-lock').checked = settings.security?.biometricLock ?? false;
+        }
+
+        // Save setting
+        async function saveSetting(key, value) {
+            await window.cleanfindingAPI.updateSetting(key, value);
+            showSaveNotification();
+        }
+
+        // Show save notification
+        function showSaveNotification() {
+            const notification = document.getElementById('save-notification');
+            notification.style.display = 'block';
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 2000);
+        }
+
+        // Setup event listeners
+        document.getElementById('tracker-blocking').addEventListener('change', (e) => {
+            saveSetting('privacy.trackerBlocking', e.target.checked);
+        });
+
+        document.getElementById('duck-player').addEventListener('change', (e) => {
+            saveSetting('privacy.duckPlayer', e.target.checked);
+        });
+
+        document.getElementById('email-protection').addEventListener('change', (e) => {
+            saveSetting('privacy.emailProtection', e.target.checked);
+        });
+
+        document.getElementById('cookie-auto-decline').addEventListener('change', (e) => {
+            saveSetting('privacy.cookieAutoDecline', e.target.checked);
+        });
+
+        document.getElementById('global-privacy-control').addEventListener('change', (e) => {
+            saveSetting('privacy.globalPrivacyControl', e.target.checked);
+        });
+
+        document.getElementById('theme').addEventListener('change', (e) => {
+            saveSetting('appearance.theme', e.target.value);
+        });
+
+        document.getElementById('biometric-lock').addEventListener('change', (e) => {
+            saveSetting('security.biometricLock', e.target.checked);
+        });
+
+        document.getElementById('clear-data-btn').addEventListener('click', async () => {
+            const confirmed = confirm('Are you sure you want to clear all browsing data?');
+            if (confirmed) {
+                const result = await window.cleanfindingAPI.clearBrowsingData({
+                    cache: true,
+                    cookies: true,
+                    history: true
+                });
+                if (result.success) {
+                    alert('Browsing data cleared successfully');
+                } else {
+                    alert('Failed to clear browsing data');
+                }
+            }
+        });
+
+        // Load settings on page load
+        loadSettings();
+    </script>
+</body>
+</html>
