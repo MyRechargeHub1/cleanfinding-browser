@@ -99,6 +99,31 @@ class MainActivity : AppCompatActivity() {
         private const val REQUEST_HISTORY = 1001
         private const val REQUEST_DOWNLOADS = 1002
         private const val REQUEST_SETTINGS = 1003
+
+        /**
+         * Escape a string for safe injection into JavaScript code
+         * Prevents JavaScript injection vulnerabilities
+         */
+        private fun escapeJavaScriptString(str: String): String {
+            return str.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("'", "\\'")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t")
+        }
+
+        /**
+         * Validate URL scheme to prevent XSS and other security vulnerabilities
+         * Only allows http, https, and about schemes
+         */
+        private fun isUrlSchemeAllowed(url: String): Boolean {
+            val lowerUrl = url.lowercase().trim()
+            return lowerUrl.startsWith("http://") ||
+                    lowerUrl.startsWith("https://") ||
+                    lowerUrl.startsWith("about:") ||
+                    !lowerUrl.contains(":")  // Allow plain URLs without scheme
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -212,6 +237,12 @@ class MainActivity : AppCompatActivity() {
         wv.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url?.toString() ?: return false
+
+                // SECURITY: Block dangerous URL schemes (javascript:, data:, file:, etc.)
+                if (!isUrlSchemeAllowed(url)) {
+                    showBlockedMessage(url)
+                    return true
+                }
 
                 // Check if Duck Player is enabled and this is a YouTube URL
                 if (preferencesManager.getDuckPlayer() && duckPlayerHandler.isYouTubeUrl(url)) {
@@ -617,7 +648,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         val tab = tabs[index]
-        tabWebViews[tab.id]?.destroy()
+        // Remove WebView from parent before destroying to prevent memory leak
+        tabWebViews[tab.id]?.let { webView ->
+            (webView.parent as? android.view.ViewGroup)?.removeView(webView)
+            webView.destroy()
+        }
         tabWebViews.remove(tab.id)
         tabs.removeAt(index)
 
@@ -651,6 +686,8 @@ class MainActivity : AppCompatActivity() {
                             clearCache(true)
                             clearFormData()
                             clearHistory()
+                            // Remove from parent before destroying to prevent memory leak
+                            (parent as? android.view.ViewGroup)?.removeView(this)
                             destroy()
                         }
                         tabWebViews.remove(tab.id)
@@ -930,6 +967,12 @@ class MainActivity : AppCompatActivity() {
             url = "https://$url"
         }
 
+        // SECURITY: Block dangerous URL schemes (javascript:, data:, file:, etc.)
+        if (!isUrlSchemeAllowed(url)) {
+            showBlockedMessage(url)
+            return
+        }
+
         if (isBlockedUrl(url)) {
             showBlockedMessage(url)
             return
@@ -997,9 +1040,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun injectBlockingScript(view: WebView?) {
+        // Escape blocked domains to prevent JavaScript injection vulnerabilities
+        val escapedDomains = blockedDomains.map { escapeJavaScriptString(it) }
         val script = """
             (function() {
-                var blockedDomains = ${blockedDomains.joinToString(",", "[", "]") { "\"$it\"" }};
+                var blockedDomains = ${escapedDomains.joinToString(",", "[", "]") { "\"$it\"" }};
 
                 var originalXHR = window.XMLHttpRequest;
                 window.XMLHttpRequest = function() {
@@ -1414,7 +1459,23 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        tabWebViews.values.forEach { it.destroy() }
+
+        // Clean up WebViews (remove from parent first to prevent memory leak)
+        tabWebViews.values.forEach { webView ->
+            (webView.parent as? android.view.ViewGroup)?.removeView(webView)
+            webView.destroy()
+        }
+
+        // Clean up download manager (prevents BroadcastReceiver leak)
+        downloadManager.cleanup()
+
+        // Clean up history manager (cancels coroutine scope)
+        historyManager.cleanup()
+
+        // Clear custom view callback to prevent leak
+        customViewCallback?.onCustomViewHidden()
+        customViewCallback = null
+        customView = null
     }
 }
 

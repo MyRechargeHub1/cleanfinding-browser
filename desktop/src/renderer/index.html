@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+    <title>CleanFinding Browser</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <!-- Browser Chrome (UI) -->
+    <div class="browser-chrome">
+        <!-- Tab Bar -->
+        <div class="tab-bar">
+            <div class="tabs-container" id="tabs-container">
+                <!-- Tabs will be dynamically added here -->
+            </div>
+            <button class="new-tab-btn" id="new-tab-btn" title="New Tab (Ctrl+T)">+</button>
+        </div>
+
+        <!-- Navigation Bar -->
+        <div class="nav-bar">
+            <div class="nav-controls">
+                <button class="nav-btn" id="back-btn" title="Back (Alt+Left)" disabled>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                </button>
+                <button class="nav-btn" id="forward-btn" title="Forward (Alt+Right)" disabled>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </button>
+                <button class="nav-btn" id="reload-btn" title="Reload (Ctrl+R)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="address-bar-container">
+                <div class="privacy-indicator" id="privacy-indicator" title="Privacy Grade">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
+                    </svg>
+                    <span id="privacy-grade">A+</span>
+                </div>
+                <input
+                    type="text"
+                    class="address-bar"
+                    id="address-bar"
+                    placeholder="Search or enter web address"
+                    autocomplete="off"
+                    spellcheck="false"
+                />
+                <button class="nav-btn bookmark-btn" id="bookmark-btn" title="Bookmark this page">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="nav-actions">
+                <button class="nav-btn" id="downloads-btn" title="Downloads">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                    </svg>
+                </button>
+                <button class="nav-btn" id="privacy-dashboard-btn" title="Privacy Dashboard">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                    <span class="blocked-count" id="blocked-count">0</span>
+                </button>
+                <button class="nav-btn" id="menu-btn" title="Menu">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- WebView Container -->
+    <div class="webview-container" id="webview-container">
+        <!-- WebViews will be dynamically added here -->
+    </div>
+
+    <!-- Menu Dropdown -->
+    <div class="dropdown-menu" id="menu-dropdown" style="display: none;">
+        <div class="menu-item" data-action="new-tab">
+            <span>New Tab</span>
+            <span class="shortcut">Ctrl+T</span>
+        </div>
+        <div class="menu-item" data-action="new-incognito-tab">
+            <span>New Incognito Tab</span>
+            <span class="shortcut">Ctrl+Shift+N</span>
+        </div>
+        <div class="menu-divider"></div>
+        <div class="menu-item" data-action="history">
+            <span>History</span>
+            <span class="shortcut">Ctrl+H</span>
+        </div>
+        <div class="menu-item" data-action="downloads">
+            <span>Downloads</span>
+            <span class="shortcut">Ctrl+J</span>
+        </div>
+        <div class="menu-item" data-action="bookmarks">
+            <span>Bookmarks</span>
+            <span class="shortcut">Ctrl+Shift+O</span>
+        </div>
+        <div class="menu-divider"></div>
+        <div class="menu-item" data-action="settings">
+            <span>Settings</span>
+            <span class="shortcut">Ctrl+,</span>
+        </div>
+        <div class="menu-item" data-action="clear-data">
+            <span>Clear Browsing Data</span>
+        </div>
+        <div class="menu-divider"></div>
+        <div class="menu-item" data-action="about">
+            <span>About CleanFinding Browser</span>
+        </div>
+    </div>
+
+    <!-- Privacy Dashboard Modal -->
+    <div class="modal" id="privacy-dashboard-modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Privacy Dashboard</h2>
+                <button class="close-btn" id="close-privacy-dashboard">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="privacy-stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="trackers-blocked">0</div>
+                        <div class="stat-label">Trackers Blocked</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="cookies-blocked">0</div>
+                        <div class="stat-label">Tracking Cookies Blocked</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="privacy-grade-stat">A+</div>
+                        <div class="stat-label">Privacy Grade</div>
+                    </div>
+                </div>
+                <div class="privacy-features">
+                    <h3>Active Privacy Features</h3>
+                    <div class="feature-list">
+                        <div class="feature-item">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+                            </svg>
+                            <span>Tracker Blocking Enabled</span>
+                        </div>
+                        <div class="feature-item">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+                            </svg>
+                            <span>Duck Player Active</span>
+                        </div>
+                        <div class="feature-item">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+                            </svg>
+                            <span>Global Privacy Control (GPC)</span>
+                        </div>
+                        <div class="feature-item">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+                            </svg>
+                            <span>Third-Party Cookie Blocking</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- About Modal -->
+    <div class="modal" id="about-modal" style="display: none;">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2>About CleanFinding Browser</h2>
+                <button class="close-btn" id="close-about">&times;</button>
+            </div>
+            <div class="modal-body about-content">
+                <div class="app-icon">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="#4CAF50">
+                        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
+                    </svg>
+                </div>
+                <h3>CleanFinding Browser</h3>
+                <p class="version">Version 1.4.0</p>
+                <p class="description">
+                    Privacy-focused, family-safe browser for Windows, macOS, and Linux.
+                    Built with privacy by default.
+                </p>
+                <div class="features-list">
+                    <p><strong>Features:</strong></p>
+                    <ul>
+                        <li>Advanced Tracker Blocking</li>
+                        <li>Duck Player (YouTube Privacy)</li>
+                        <li>Email Protection</li>
+                        <li>Global Privacy Control (GPC)</li>
+                        <li>Cookie Auto-Decline</li>
+                    </ul>
+                </div>
+                <p class="copyright">&copy; 2024 CleanFinding Browser Team</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clear Data Modal -->
+    <div class="modal" id="clear-data-modal" style="display: none;">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2>Clear Browsing Data</h2>
+                <button class="close-btn" id="close-clear-data">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="clear-options">
+                    <label>
+                        <input type="checkbox" id="clear-cache" checked>
+                        <span>Cached images and files</span>
+                    </label>
+                    <label>
+                        <input type="checkbox" id="clear-cookies" checked>
+                        <span>Cookies and site data</span>
+                    </label>
+                    <label>
+                        <input type="checkbox" id="clear-history" checked>
+                        <span>Browsing history</span>
+                    </label>
+                </div>
+                <button class="primary-btn" id="confirm-clear-data">Clear Data</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/browser.js"></script>
+</body>
+</html>
