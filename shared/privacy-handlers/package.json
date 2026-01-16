@@ -1,0 +1,21 @@
+{
+  "name": "@cleanfinding/privacy-handlers",
+  "version": "1.4.0",
+  "description": "Cross-platform privacy handlers for CleanFinding Browser",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "keywords": [
+    "privacy",
+    "tracker-blocking",
+    "duck-player",
+    "email-protection",
+    "cross-platform"
+  ],
+  "author": "CleanFinding Browser Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
