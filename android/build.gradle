@@ -11,6 +11,9 @@ buildscript {
     }
 }
 
+// Removed allprojects block - repositories are now managed in settings.gradle
+// This fixes Gradle 8.x build errors with dependencyResolutionManagement
+
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
