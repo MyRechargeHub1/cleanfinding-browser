@@ -1065,6 +1065,13 @@ class MainActivity : AppCompatActivity() {
         val escapedDomains = blockedDomains.map { escapeJavaScriptString(it) }
         val script = """
             (function() {
+                // CRITICAL: Skip ad blocking on CleanFinding.com to prevent breaking search functionality
+                // The ad blocking CSS selectors are too broad and can hide legitimate page elements
+                if (window.location.hostname.indexOf('cleanfinding.com') !== -1) {
+                    console.log('CleanFinding: Skipping ad blocking on cleanfinding.com');
+                    return;
+                }
+
                 var blockedDomains = ${escapedDomains.joinToString(",", "[", "]") { "\"$it\"" }};
 
                 var originalXHR = window.XMLHttpRequest;

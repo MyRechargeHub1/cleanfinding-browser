@@ -257,6 +257,12 @@ class BrowserViewController: UIViewController {
         let domainsJSON = blockedDomains.map { "\"\($0)\"" }.joined(separator: ",")
         return """
         (function() {
+            // CRITICAL: Skip ad blocking on CleanFinding.com to prevent breaking search functionality
+            if (window.location.hostname.indexOf('cleanfinding.com') !== -1) {
+                console.log('CleanFinding: Skipping ad blocking on cleanfinding.com');
+                return;
+            }
+
             var blockedDomains = [\(domainsJSON)];
 
             // Override fetch
