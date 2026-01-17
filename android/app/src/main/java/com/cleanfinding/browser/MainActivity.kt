@@ -224,7 +224,16 @@ class MainActivity : AppCompatActivity() {
                 layoutAlgorithm = WebSettings.LayoutAlgorithm.NORMAL
                 // 5. Disable text auto-sizing that's designed for mobile
                 textZoom = 100  // Fixed zoom, no mobile scaling
+
+                // CHROME-LIKE: Set initial scale to fit 1024px desktop content on screen
+                val displayMetrics = resources.displayMetrics
+                val screenWidthPx = displayMetrics.widthPixels
+                val desktopWidth = 1024
+                val initialScale = ((screenWidthPx.toFloat() / desktopWidth) * 100).toInt()
+                wv.setInitialScale(initialScale)
             } else {
+                // Reset initial scale for mobile mode
+                wv.setInitialScale(0)
                 // Mobile mode settings
                 useWideViewPort = true
                 loadWithOverviewMode = true
@@ -1108,8 +1117,19 @@ class MainActivity : AppCompatActivity() {
 
         // Apply or restore viewport based on mode
         if (desktopMode) {
+            // CHROME-LIKE: Calculate initial zoom to fit desktop content on mobile screen
+            // Desktop content is rendered at 1024px width, so we scale to fit screen
+            val displayMetrics = resources.displayMetrics
+            val screenWidthPx = displayMetrics.widthPixels
+            // Calculate scale: (screen width / content width) * 100
+            // This makes the 1024px desktop layout fit the mobile screen width
+            val desktopWidth = 1024
+            val initialScale = ((screenWidthPx.toFloat() / desktopWidth) * 100).toInt()
+            webView.setInitialScale(initialScale)
             injectDesktopModeScript(webView)
         } else {
+            // Reset to default scale for mobile mode
+            webView.setInitialScale(0)  // 0 means use default
             restoreMobileViewport(webView)
         }
 
@@ -1123,20 +1143,30 @@ class MainActivity : AppCompatActivity() {
 
     // Inject JavaScript to force desktop viewport (Chrome-like behavior)
     private fun injectDesktopModeScript(view: WebView?) {
+        // Calculate the initial scale to fit 1024px content on screen
+        val displayMetrics = resources.displayMetrics
+        val screenWidthPx = displayMetrics.widthPixels
+        val desktopWidth = 1024
+        val initialScale = screenWidthPx.toFloat() / desktopWidth
+
         val script = """
             (function() {
                 // Remove or modify viewport meta tag to force desktop layout
                 var viewport = document.querySelector('meta[name="viewport"]');
+                // Calculate scale to fit desktop content on mobile screen
+                var initialScale = $initialScale;
+                var viewportContent = 'width=$desktopWidth, initial-scale=' + initialScale + ', minimum-scale=' + (initialScale * 0.5) + ', maximum-scale=3.0, user-scalable=yes';
+
                 if (viewport) {
                     // Store original viewport for restoration
                     viewport.setAttribute('data-original-content', viewport.getAttribute('content'));
-                    // Set desktop-style viewport (width=1024 is common desktop breakpoint)
-                    viewport.setAttribute('content', 'width=1024, initial-scale=1.0, user-scalable=yes');
+                    // Set desktop-style viewport with calculated scale to fit screen
+                    viewport.setAttribute('content', viewportContent);
                 } else {
                     // Create viewport meta if it doesn't exist
                     var meta = document.createElement('meta');
                     meta.name = 'viewport';
-                    meta.content = 'width=1024, initial-scale=1.0, user-scalable=yes';
+                    meta.content = viewportContent;
                     document.head.appendChild(meta);
                 }
 
@@ -1149,7 +1179,7 @@ class MainActivity : AppCompatActivity() {
                     document.head.appendChild(style);
                 } catch(e) {}
 
-                console.log('CleanFinding: Desktop mode viewport applied');
+                console.log('CleanFinding: Desktop mode viewport applied with scale ' + initialScale);
             })();
         """.trimIndent()
 
@@ -1745,6 +1775,14 @@ class MainActivity : AppCompatActivity() {
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         when {
+            // CRITICAL: Check fullscreen mode FIRST - exit fullscreen instead of navigating back
+            // This prevents the user from being "kicked out" when pressing back in fullscreen video
+            customView != null -> {
+                // Exit fullscreen mode by calling the callback
+                customViewCallback?.onCustomViewHidden()
+                // Also manually trigger onHideCustomView to ensure cleanup
+                (webView.webChromeClient as? WebChromeClient)?.onHideCustomView()
+            }
             findBar.visibility == View.VISIBLE -> closeFindBar()
             webView.canGoBack() -> webView.goBack()
             else -> super.onBackPressed()
