@@ -486,68 +486,52 @@ class MainActivity : AppCompatActivity() {
 
             // CRITICAL FIX: Enable fullscreen video support for YouTube
             override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
-                if (customView != null) {
-                    callback?.onCustomViewHidden()
-                    return
+                try {
+                    if (customView != null) {
+                        callback?.onCustomViewHidden()
+                        return
+                    }
+
+                    customView = view
+                    customViewCallback = callback
+
+                    // CHROME-LIKE: Set the view to use hardware layer for smooth video
+                    view?.setLayerType(View.LAYER_TYPE_HARDWARE, null)
+
+                    // CHROME-LIKE: Request landscape orientation for fullscreen video
+                    requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+
+                    // Hide normal content
+                    findViewById<LinearLayout>(R.id.tabBar)?.visibility = View.GONE
+                    findViewById<LinearLayout>(R.id.urlEditText)?.parent?.let {
+                        (it as View).visibility = View.GONE
+                    }
+                    webView.visibility = View.GONE
+
+                    // CHROME-LIKE: Make system bars transparent/hidden for immersive video
+                    window.decorView.systemUiVisibility = (
+                        View.SYSTEM_UI_FLAG_FULLSCREEN or
+                        View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                    )
+
+                    // Show fullscreen video
+                    customViewContainer.visibility = View.VISIBLE
+                    customViewContainer.setBackgroundColor(android.graphics.Color.BLACK)
+                    customViewContainer.addView(customView, FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.MATCH_PARENT
+                    ))
+                } catch (e: Exception) {
+                    android.util.Log.e("WebView", "Error showing fullscreen: ${e.message}")
+                    // Clean up on error
+                    customView = null
+                    customViewCallback = null
                 }
-
-                customView = view
-                customViewCallback = callback
-
-                // CHROME-LIKE: Set the view to use hardware layer for smooth video
-                view?.setLayerType(View.LAYER_TYPE_HARDWARE, null)
-
-                // CHROME-LIKE: Request landscape orientation for fullscreen video
-                requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-
-                // Hide normal content
-                findViewById<LinearLayout>(R.id.tabBar)?.visibility = View.GONE
-                findViewById<LinearLayout>(R.id.urlEditText)?.parent?.let {
-                    (it as View).visibility = View.GONE
-                }
-                webView.visibility = View.GONE
-
-                // CHROME-LIKE: Make system bars transparent/hidden for immersive video
-                window.decorView.systemUiVisibility = (
-                    View.SYSTEM_UI_FLAG_FULLSCREEN or
-                    View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                )
-
-                // Show fullscreen video
-                customViewContainer.visibility = View.VISIBLE
-                customViewContainer.setBackgroundColor(android.graphics.Color.BLACK)
-                customViewContainer.addView(customView, FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                    FrameLayout.LayoutParams.MATCH_PARENT
-                ))
             }
 
             override fun onHideCustomView() {
-                if (customView == null) {
-                    return
-                }
-
-                // CHROME-LIKE: Restore orientation
-                requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-
-                // CHROME-LIKE: Restore system UI
-                window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
-
-                // Hide fullscreen video
-                customViewContainer.visibility = View.GONE
-                customViewContainer.removeView(customView)
-
-                // Show normal content
-                findViewById<LinearLayout>(R.id.tabBar)?.visibility = View.VISIBLE
-                findViewById<LinearLayout>(R.id.urlEditText)?.parent?.let {
-                    (it as View).visibility = View.VISIBLE
-                }
-                webView.visibility = View.VISIBLE
-
-                customView = null
-                customViewCallback?.onCustomViewHidden()
-                customViewCallback = null
+                exitFullscreenMode()
             }
 
             // Log JavaScript console messages for debugging
@@ -1108,6 +1092,56 @@ class MainActivity : AppCompatActivity() {
         webView.reload()
 
         // The refresh indicator will be hidden in onPageFinished
+    }
+
+    /**
+     * Exit fullscreen video mode safely
+     * This is called from both onHideCustomView() and onBackPressed()
+     * to ensure proper cleanup without crashes
+     */
+    private fun exitFullscreenMode() {
+        if (customView == null) {
+            return
+        }
+
+        try {
+            // CHROME-LIKE: Restore orientation
+            requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+
+            // CHROME-LIKE: Restore system UI
+            window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+
+            // Hide fullscreen video container
+            customViewContainer.visibility = View.GONE
+
+            // Safely remove the custom view
+            customView?.let { view ->
+                customViewContainer.removeView(view)
+            }
+
+            // Show normal content
+            findViewById<LinearLayout>(R.id.tabBar)?.visibility = View.VISIBLE
+            findViewById<LinearLayout>(R.id.urlEditText)?.parent?.let {
+                (it as View).visibility = View.VISIBLE
+            }
+            webView.visibility = View.VISIBLE
+
+            // Notify the callback that we're done (only once)
+            val callback = customViewCallback
+            customView = null
+            customViewCallback = null
+
+            // Call callback AFTER nulling to prevent re-entry
+            callback?.onCustomViewHidden()
+
+        } catch (e: Exception) {
+            android.util.Log.e("WebView", "Error exiting fullscreen: ${e.message}")
+            // Force cleanup even on error
+            customView = null
+            customViewCallback = null
+            customViewContainer.visibility = View.GONE
+            webView.visibility = View.VISIBLE
+        }
     }
 
     // Desktop mode - Chrome-like implementation
@@ -1778,10 +1812,8 @@ class MainActivity : AppCompatActivity() {
             // CRITICAL: Check fullscreen mode FIRST - exit fullscreen instead of navigating back
             // This prevents the user from being "kicked out" when pressing back in fullscreen video
             customView != null -> {
-                // Exit fullscreen mode by calling the callback
-                customViewCallback?.onCustomViewHidden()
-                // Also manually trigger onHideCustomView to ensure cleanup
-                (webView.webChromeClient as? WebChromeClient)?.onHideCustomView()
+                // Use our safe exitFullscreenMode() function to avoid crashes
+                exitFullscreenMode()
             }
             findBar.visibility == View.VISIBLE -> closeFindBar()
             webView.canGoBack() -> webView.goBack()
