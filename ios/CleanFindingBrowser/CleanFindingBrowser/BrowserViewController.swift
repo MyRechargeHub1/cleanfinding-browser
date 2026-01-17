@@ -117,6 +117,14 @@ class BrowserViewController: UIViewController {
         let configuration = WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = true
 
+        // CRITICAL: Enable JavaScript and configure preferences for search to work
+        let preferences = WKPreferences()
+        preferences.javaScriptEnabled = true
+        configuration.preferences = preferences
+
+        // CRITICAL: Enable DOM storage via default data store for search API calls
+        configuration.websiteDataStore = WKWebsiteDataStore.default()
+
         // Add content blocker
         let contentController = WKUserContentController()
         let blockingScript = createBlockingScript()

@@ -263,11 +263,14 @@ function createTab(url = 'https://cleanfinding.com', isIncognito = false) {
     elements.tabsContainer.appendChild(tabElement);
     tab.element = tabElement;
 
-    // Create webview
+    // Create webview with proper web preferences for search functionality
     const webview = document.createElement('webview');
     webview.src = url;
     webview.className = 'hidden';
     webview.dataset.tabId = tabId;
+    // CRITICAL: Enable JavaScript and DOM storage for search API calls to work
+    webview.setAttribute('webpreferences', 'javascript=yes, webSecurity=yes, allowRunningInsecureContent=no');
+    webview.setAttribute('allowpopups', 'true');
 
     // Webview event listeners
     setupWebviewListeners(webview, tab);

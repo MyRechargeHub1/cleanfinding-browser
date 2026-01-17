@@ -78,10 +78,11 @@ function createWindow() {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
             nodeIntegration: false,
-            sandbox: true,
+            sandbox: false,  // Must be false to allow webview tag
             webSecurity: true,
             allowRunningInsecureContent: false,
-            enableRemoteModule: false
+            enableRemoteModule: false,
+            webviewTag: true  // CRITICAL: Enable webview tag for browser tabs
         },
         icon: path.join(__dirname, 'build/icons/icon.png'),
         title: 'CleanFinding Browser',
