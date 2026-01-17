@@ -411,9 +411,9 @@ async function navigateToUrl(input) {
 
     let url = input.trim();
 
-    // Search if not a URL
+    // Search if not a URL - use CleanFinding search (same as Android/iOS)
     if (!url.includes('.') && !url.startsWith('http://') && !url.startsWith('https://')) {
-        url = `https://duckduckgo.com/?q=${encodeURIComponent(url)}`;
+        url = `https://cleanfinding.com/search?q=${encodeURIComponent(url)}`;
     } else if (!url.startsWith('http://') && !url.startsWith('https://')) {
         url = `https://${url}`;
     }
