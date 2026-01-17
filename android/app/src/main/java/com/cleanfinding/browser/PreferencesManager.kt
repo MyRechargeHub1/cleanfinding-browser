@@ -47,7 +47,10 @@ class PreferencesManager(context: Context) {
         const val DEFAULT_BLOCK_ADULT_CONTENT = true
         const val DEFAULT_FORCE_HTTPS = true
         const val DEFAULT_FORCE_SAFE_SEARCH = true
-        const val DEFAULT_DUCK_PLAYER = true
+        // CRITICAL FIX: DuckPlayer disabled by default to allow native YouTube playback
+        // When enabled, YouTube redirects to youtube-nocookie.com/embed which causes black screen
+        // Users can enable this manually in settings if they prefer privacy over native playback
+        const val DEFAULT_DUCK_PLAYER = false
         const val DEFAULT_EMAIL_PROTECTION = true
         const val DEFAULT_DARK_MODE = true
         const val DEFAULT_SHOW_IMAGES = true
