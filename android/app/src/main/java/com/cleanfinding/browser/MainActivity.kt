@@ -262,13 +262,15 @@ class MainActivity : AppCompatActivity() {
             // CRITICAL FIX: Set default text encoding for proper character display
             defaultTextEncodingName = "UTF-8"
 
-            // DESKTOP MODE: Set appropriate user agent string
+            // CHROME-LIKE: Set user agent string that matches Chrome browser
+            // This is critical for YouTube - it detects WebView and serves degraded experience
             userAgentString = if (desktopMode) {
                 // Chrome 120 on Windows 10 - matches what Chrome uses for "Request desktop site"
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             } else {
-                // Mobile user agent with CleanFinding identifier
-                userAgentString.replace("; wv", "") + " CleanFindingBrowser/1.0"
+                // CHROME MOBILE user agent - NOT WebView user agent
+                // This makes YouTube serve the proper mobile experience with working video
+                "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
             }
         }
 
@@ -424,6 +426,53 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+            // CHROME-LIKE: Return a default video poster (black frame) like Chrome does
+            override fun getDefaultVideoPoster(): android.graphics.Bitmap? {
+                // Return a 1x1 black pixel bitmap as default video poster
+                // This prevents the white/gray placeholder that causes "black screen" appearance
+                return android.graphics.Bitmap.createBitmap(1, 1, android.graphics.Bitmap.Config.ARGB_8888).apply {
+                    eraseColor(android.graphics.Color.BLACK)
+                }
+            }
+
+            // CHROME-LIKE: Return a loading view for video (prevents black screen during load)
+            override fun getVideoLoadingProgressView(): View? {
+                // Create a simple black view with a loading indicator
+                val loadingView = FrameLayout(this@MainActivity)
+                loadingView.setBackgroundColor(android.graphics.Color.BLACK)
+
+                val progressBar = android.widget.ProgressBar(this@MainActivity).apply {
+                    isIndeterminate = true
+                    layoutParams = FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                        android.view.Gravity.CENTER
+                    )
+                }
+                loadingView.addView(progressBar)
+                return loadingView
+            }
+
+            // CHROME-LIKE: Handle media permission requests (camera, microphone)
+            override fun onPermissionRequest(request: android.webkit.PermissionRequest?) {
+                request?.let {
+                    // Grant video-related permissions for proper playback
+                    val resources = it.resources
+                    val grantedResources = resources.filter { resource ->
+                        resource == android.webkit.PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID ||
+                        resource == android.webkit.PermissionRequest.RESOURCE_VIDEO_CAPTURE
+                    }.toTypedArray()
+
+                    if (grantedResources.isNotEmpty()) {
+                        runOnUiThread {
+                            it.grant(grantedResources)
+                        }
+                    } else {
+                        it.deny()
+                    }
+                }
+            }
+
             // CRITICAL FIX: Enable fullscreen video support for YouTube
             override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
                 if (customView != null) {
@@ -434,6 +483,12 @@ class MainActivity : AppCompatActivity() {
                 customView = view
                 customViewCallback = callback
 
+                // CHROME-LIKE: Set the view to use hardware layer for smooth video
+                view?.setLayerType(View.LAYER_TYPE_HARDWARE, null)
+
+                // CHROME-LIKE: Request landscape orientation for fullscreen video
+                requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+
                 // Hide normal content
                 findViewById<LinearLayout>(R.id.tabBar)?.visibility = View.GONE
                 findViewById<LinearLayout>(R.id.urlEditText)?.parent?.let {
@@ -441,8 +496,16 @@ class MainActivity : AppCompatActivity() {
                 }
                 webView.visibility = View.GONE
 
+                // CHROME-LIKE: Make system bars transparent/hidden for immersive video
+                window.decorView.systemUiVisibility = (
+                    View.SYSTEM_UI_FLAG_FULLSCREEN or
+                    View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                )
+
                 // Show fullscreen video
                 customViewContainer.visibility = View.VISIBLE
+                customViewContainer.setBackgroundColor(android.graphics.Color.BLACK)
                 customViewContainer.addView(customView, FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
                     FrameLayout.LayoutParams.MATCH_PARENT
@@ -453,6 +516,12 @@ class MainActivity : AppCompatActivity() {
                 if (customView == null) {
                     return
                 }
+
+                // CHROME-LIKE: Restore orientation
+                requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+
+                // CHROME-LIKE: Restore system UI
+                window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
 
                 // Hide fullscreen video
                 customViewContainer.visibility = View.GONE
