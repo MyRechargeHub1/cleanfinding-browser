@@ -1270,6 +1270,15 @@ class MainActivity : AppCompatActivity() {
                     return;
                 }
 
+                // CRITICAL: Skip ad blocking on YouTube to prevent video playback issues
+                // YouTube's internal classes contain "ad" patterns that our selectors would incorrectly match
+                // YouTube handles its own ad blocking detection and breaks if we interfere
+                if (window.location.hostname.indexOf('youtube.com') !== -1 ||
+                    window.location.hostname.indexOf('youtu.be') !== -1) {
+                    console.log('CleanFinding: Skipping ad blocking on YouTube for proper video playback');
+                    return;
+                }
+
                 var blockedDomains = ${escapedDomains.joinToString(",", "[", "]") { "\"$it\"" }};
 
                 var originalXHR = window.XMLHttpRequest;
@@ -1426,11 +1435,21 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun injectVideoFixCSS(view: WebView?) {
-        // CRITICAL FIX: Enhanced video and image rendering fixes for Pinterest and YouTube
+        // CRITICAL FIX: Enhanced video and image rendering fixes for Pinterest
+        // NOTE: We skip YouTube because our CSS overrides interfere with YouTube's native player
         val cssScript = """
             (function() {
+                // CRITICAL: Skip CSS injection on YouTube - their player is complex and our
+                // overrides with !important break the native video rendering
+                // YouTube works best when left completely alone
+                var hostname = window.location.hostname;
+                if (hostname.indexOf('youtube.com') !== -1 || hostname.indexOf('youtu.be') !== -1) {
+                    console.log('CleanFinding: Skipping media fixes on YouTube - using native player');
+                    return;
+                }
+
                 if (document.getElementById('cleanfinding-media-fix')) return;
-                console.log('CleanFinding: Applying Pinterest/YouTube media fixes...');
+                console.log('CleanFinding: Applying Pinterest media fixes...');
 
                 // Inject comprehensive CSS fixes
                 var style = document.createElement('style');
