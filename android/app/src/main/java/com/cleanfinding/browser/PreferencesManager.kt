@@ -12,7 +12,32 @@ class PreferencesManager(context: Context) {
 
     private val prefs: SharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
 
+    init {
+        // Run preference migrations on initialization
+        runMigrations()
+    }
+
+    /**
+     * Run preference migrations to fix issues for existing users
+     */
+    private fun runMigrations() {
+        val currentVersion = prefs.getInt(KEY_PREFS_VERSION, 0)
+
+        // Migration v1: Disable DuckPlayer for all existing users
+        // DuckPlayer causes YouTube black screen by redirecting to youtube-nocookie.com/embed
+        // Users who installed before this fix would have the old default (true) saved
+        if (currentVersion < 1) {
+            // Force DuckPlayer off for all existing installations
+            prefs.edit()
+                .putBoolean(KEY_DUCK_PLAYER, false)
+                .putInt(KEY_PREFS_VERSION, 1)
+                .apply()
+        }
+    }
+
     companion object {
+        // Preference version for migrations
+        const val KEY_PREFS_VERSION = "prefs_version"
         // Privacy settings
         const val KEY_BLOCK_TRACKERS = "block_trackers"
         const val KEY_BLOCK_ADS = "block_ads"
