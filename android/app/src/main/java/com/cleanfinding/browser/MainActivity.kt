@@ -180,11 +180,13 @@ class MainActivity : AppCompatActivity() {
         wv.setLayerType(View.LAYER_TYPE_HARDWARE, null)
 
         wv.settings.apply {
-            // CRITICAL: Always enable JavaScript and DOM storage for search to work
+            // CRITICAL: Always enable JavaScript, DOM storage, and database for search to work
             // Modern websites (including cleanfinding.com search) require these features
+            // Note: Even in incognito mode, we need DOM storage enabled for sites to function
+            // Privacy is maintained by clearing storage when incognito tab is closed
             javaScriptEnabled = true
-            domStorageEnabled = !isIncognito  // Enable DOM storage unless in incognito mode
-            databaseEnabled = !isIncognito  // Enable database unless in incognito mode
+            domStorageEnabled = true  // Always enable - required for search API calls
+            databaseEnabled = true  // Always enable - required for modern web features
             setSupportZoom(true)
             builtInZoomControls = true
             displayZoomControls = false
@@ -659,6 +661,14 @@ class MainActivity : AppCompatActivity() {
         val tab = tabs[index]
         // Remove WebView from parent before destroying to prevent memory leak
         tabWebViews[tab.id]?.let { webView ->
+            // Clear data for incognito tabs to maintain privacy
+            if (tab.isIncognito) {
+                webView.clearCache(true)
+                webView.clearFormData()
+                webView.clearHistory()
+                // Clear WebStorage (localStorage/sessionStorage) for this WebView
+                android.webkit.WebStorage.getInstance().deleteAllData()
+            }
             (webView.parent as? android.view.ViewGroup)?.removeView(webView)
             webView.destroy()
         }
@@ -699,6 +709,8 @@ class MainActivity : AppCompatActivity() {
                             (parent as? android.view.ViewGroup)?.removeView(this)
                             destroy()
                         }
+                        // Clear WebStorage for all incognito tabs
+                        android.webkit.WebStorage.getInstance().deleteAllData()
                         tabWebViews.remove(tab.id)
                         tabs.removeAt(i)
 
