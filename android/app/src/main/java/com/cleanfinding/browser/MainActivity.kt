@@ -26,6 +26,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var backButton: ImageButton
     private lateinit var forwardButton: ImageButton
     private lateinit var homeButton: ImageButton
+    private lateinit var refreshButton: ImageButton
     private lateinit var menuButton: ImageButton
     private lateinit var tabsButton: FrameLayout
     private lateinit var tabCountText: TextView
@@ -158,6 +159,7 @@ class MainActivity : AppCompatActivity() {
         backButton = findViewById(R.id.backButton)
         forwardButton = findViewById(R.id.forwardButton)
         homeButton = findViewById(R.id.homeButton)
+        refreshButton = findViewById(R.id.refreshButton)
         menuButton = findViewById(R.id.menuButton)
         tabsButton = findViewById(R.id.tabsButton)
         tabCountText = findViewById(R.id.tabCountText)
@@ -593,6 +595,10 @@ class MainActivity : AppCompatActivity() {
             loadUrl(homeUrl)
         }
 
+        refreshButton.setOnClickListener {
+            refreshPage()
+        }
+
         menuButton.setOnClickListener {
             showMenu()
         }
@@ -923,6 +929,10 @@ class MainActivity : AppCompatActivity() {
 
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
+                R.id.menu_refresh -> {
+                    refreshPage()
+                    true
+                }
                 R.id.menu_new_tab -> {
                     createNewTab(homeUrl)
                     true
@@ -1078,6 +1088,17 @@ class MainActivity : AppCompatActivity() {
         }
 
         startActivity(Intent.createChooser(shareIntent, "Share via"))
+    }
+
+    // Refresh the current page
+    private fun refreshPage() {
+        // Show refresh indicator
+        swipeRefresh.isRefreshing = true
+
+        // Reload the current page
+        webView.reload()
+
+        // The refresh indicator will be hidden in onPageFinished
     }
 
     // Desktop mode - Chrome-like implementation
