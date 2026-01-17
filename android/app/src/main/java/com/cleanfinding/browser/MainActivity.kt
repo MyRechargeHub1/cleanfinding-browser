@@ -190,12 +190,35 @@ class MainActivity : AppCompatActivity() {
             setSupportZoom(true)
             builtInZoomControls = true
             displayZoomControls = false
-            loadWithOverviewMode = true
-            useWideViewPort = true
             allowFileAccess = false
             allowContentAccess = false
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             safeBrowsingEnabled = true
+
+            // DESKTOP MODE: Configure viewport and layout settings like Chrome
+            if (desktopMode) {
+                // Chrome desktop mode settings:
+                // 1. Use wide viewport to show desktop layouts
+                useWideViewPort = true
+                // 2. Load page zoomed out to show full width (like Chrome)
+                loadWithOverviewMode = true
+                // 3. Set minimum logical screen width to desktop size (Chrome uses ~980-1024px)
+                // This forces websites to render their desktop version
+                @Suppress("DEPRECATION")
+                minimumLogicalFontSize = 8  // Smaller fonts allowed in desktop mode
+                // 4. Use NORMAL layout algorithm (not TEXT_AUTOSIZING) for true desktop rendering
+                layoutAlgorithm = WebSettings.LayoutAlgorithm.NORMAL
+                // 5. Disable text auto-sizing that's designed for mobile
+                textZoom = 100  // Fixed zoom, no mobile scaling
+            } else {
+                // Mobile mode settings
+                useWideViewPort = true
+                loadWithOverviewMode = true
+                // Use TEXT_AUTOSIZING for better mobile readability
+                layoutAlgorithm = WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING
+                // Apply user's text size preference
+                textZoom = preferencesManager.getTextSize()
+            }
 
             // Apply cache mode settings
             if (isIncognito) {
@@ -211,18 +234,17 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            // Apply text size setting
-            textZoom = preferencesManager.getTextSize()
-
-            // Apply image loading setting
-            loadsImagesAutomatically = if (isIncognito) true else preferencesManager.getShowImages()
-            blockNetworkImage = if (isIncognito) false else !preferencesManager.getShowImages()
+            // Apply image loading setting (only in non-desktop mode, desktop always loads images)
+            if (!desktopMode) {
+                loadsImagesAutomatically = if (isIncognito) true else preferencesManager.getShowImages()
+                blockNetworkImage = if (isIncognito) false else !preferencesManager.getShowImages()
+            } else {
+                loadsImagesAutomatically = true
+                blockNetworkImage = false
+            }
 
             // CRITICAL FIX: Enable video playback without user gesture
             mediaPlaybackRequiresUserGesture = false
-
-            // CRITICAL FIX: Better layout algorithm for images and content
-            layoutAlgorithm = WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING
 
             // CRITICAL FIX: Enable all media features
             javaScriptCanOpenWindowsAutomatically = false
@@ -230,9 +252,12 @@ class MainActivity : AppCompatActivity() {
             // CRITICAL FIX: Set viewport meta tag support
             setSupportMultipleWindows(false)
 
+            // DESKTOP MODE: Set appropriate user agent string
             userAgentString = if (desktopMode) {
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 CleanFindingBrowser/1.0"
+                // Chrome 120 on Windows 10 - matches what Chrome uses for "Request desktop site"
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             } else {
+                // Mobile user agent with CleanFinding identifier
                 userAgentString.replace("; wv", "") + " CleanFindingBrowser/1.0"
             }
         }
@@ -342,6 +367,11 @@ class MainActivity : AppCompatActivity() {
                     // Apply Email Protection for webmail services
                     if (preferencesManager.getEmailProtection() && url != null) {
                         emailProtectionHandler.injectEmailProtection(view, url)
+                    }
+
+                    // Apply desktop mode viewport if enabled (Chrome-like behavior)
+                    if (desktopMode) {
+                        injectDesktopModeScript(view)
                     }
 
                     // Record page visit in history (if not incognito)
@@ -971,12 +1001,80 @@ class MainActivity : AppCompatActivity() {
         startActivity(Intent.createChooser(shareIntent, "Share via"))
     }
 
-    // Desktop mode
+    // Desktop mode - Chrome-like implementation
     private fun toggleDesktopMode() {
         desktopMode = !desktopMode
         setupWebView(webView)
+
+        // Apply or restore viewport based on mode
+        if (desktopMode) {
+            injectDesktopModeScript(webView)
+        } else {
+            restoreMobileViewport(webView)
+        }
+
         webView.reload()
-        Toast.makeText(this, if (desktopMode) "Desktop mode enabled" else "Mobile mode enabled", Toast.LENGTH_SHORT).show()
+        Toast.makeText(
+            this,
+            if (desktopMode) "Desktop site • Viewing full site" else "Mobile site",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
+    // Inject JavaScript to force desktop viewport (Chrome-like behavior)
+    private fun injectDesktopModeScript(view: WebView?) {
+        val script = """
+            (function() {
+                // Remove or modify viewport meta tag to force desktop layout
+                var viewport = document.querySelector('meta[name="viewport"]');
+                if (viewport) {
+                    // Store original viewport for restoration
+                    viewport.setAttribute('data-original-content', viewport.getAttribute('content'));
+                    // Set desktop-style viewport (width=1024 is common desktop breakpoint)
+                    viewport.setAttribute('content', 'width=1024, initial-scale=1.0, user-scalable=yes');
+                } else {
+                    // Create viewport meta if it doesn't exist
+                    var meta = document.createElement('meta');
+                    meta.name = 'viewport';
+                    meta.content = 'width=1024, initial-scale=1.0, user-scalable=yes';
+                    document.head.appendChild(meta);
+                }
+
+                // Force desktop media queries by setting a wide screen width
+                // This tricks CSS media queries into thinking we're on desktop
+                try {
+                    var style = document.createElement('style');
+                    style.id = 'cleanfinding-desktop-mode';
+                    style.textContent = '/* Desktop mode active */';
+                    document.head.appendChild(style);
+                } catch(e) {}
+
+                console.log('CleanFinding: Desktop mode viewport applied');
+            })();
+        """.trimIndent()
+
+        view?.evaluateJavascript(script, null)
+    }
+
+    // Restore mobile viewport when switching back
+    private fun restoreMobileViewport(view: WebView?) {
+        val script = """
+            (function() {
+                var viewport = document.querySelector('meta[name="viewport"]');
+                if (viewport && viewport.hasAttribute('data-original-content')) {
+                    viewport.setAttribute('content', viewport.getAttribute('data-original-content'));
+                    viewport.removeAttribute('data-original-content');
+                }
+
+                // Remove desktop mode style
+                var desktopStyle = document.getElementById('cleanfinding-desktop-mode');
+                if (desktopStyle) desktopStyle.remove();
+
+                console.log('CleanFinding: Mobile viewport restored');
+            })();
+        """.trimIndent()
+
+        view?.evaluateJavascript(script, null)
     }
 
     private fun loadUrl(input: String) {
