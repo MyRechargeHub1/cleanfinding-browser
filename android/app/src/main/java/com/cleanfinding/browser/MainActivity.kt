@@ -191,9 +191,21 @@ class MainActivity : AppCompatActivity() {
             builtInZoomControls = true
             displayZoomControls = false
             allowFileAccess = false
-            allowContentAccess = false
-            mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+            allowContentAccess = true  // CRITICAL: Enable for Pinterest/YouTube content loading
+
+            // CRITICAL FIX: Allow mixed content for sites like Pinterest that may have HTTP resources
+            // This is needed for proper image/video loading on many sites
+            mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+
             safeBrowsingEnabled = true
+
+            // CRITICAL FIX: Enable modern media features for YouTube/Pinterest
+            @Suppress("DEPRECATION")
+            setGeolocationEnabled(false)  // Privacy: disable location
+
+            // Enable media playback inline (for iOS-style playsinline behavior)
+            // This is crucial for proper video rendering on mobile
+            mediaPlaybackRequiresUserGesture = false
 
             // DESKTOP MODE: Configure viewport and layout settings like Chrome
             if (desktopMode) {
@@ -243,14 +255,12 @@ class MainActivity : AppCompatActivity() {
                 blockNetworkImage = false
             }
 
-            // CRITICAL FIX: Enable video playback without user gesture
-            mediaPlaybackRequiresUserGesture = false
-
-            // CRITICAL FIX: Enable all media features
+            // CRITICAL FIX: Prevent popups but allow necessary window operations
             javaScriptCanOpenWindowsAutomatically = false
-
-            // CRITICAL FIX: Set viewport meta tag support
             setSupportMultipleWindows(false)
+
+            // CRITICAL FIX: Set default text encoding for proper character display
+            defaultTextEncodingName = "UTF-8"
 
             // DESKTOP MODE: Set appropriate user agent string
             userAgentString = if (desktopMode) {
@@ -1326,134 +1336,221 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun injectVideoFixCSS(view: WebView?) {
-        // CRITICAL FIX: Enhanced video and image rendering fixes with dynamic monitoring
+        // CRITICAL FIX: Enhanced video and image rendering fixes for Pinterest and YouTube
         val cssScript = """
             (function() {
-                console.log('CleanFinding: Applying video/image fixes...');
+                if (document.getElementById('cleanfinding-media-fix')) return;
+                console.log('CleanFinding: Applying Pinterest/YouTube media fixes...');
 
-                // Inject CSS fixes
+                // Inject comprehensive CSS fixes
                 var style = document.createElement('style');
-                style.id = 'cleanfinding-video-fix';
+                style.id = 'cleanfinding-media-fix';
                 style.textContent = `
-                    /* Force video visibility and proper layering */
-                    video, .video-stream {
+                    /* ============ YOUTUBE VIDEO FIXES ============ */
+                    /* Force video element visibility */
+                    video, .video-stream, .html5-main-video {
                         opacity: 1 !important;
                         visibility: visible !important;
                         display: block !important;
                         background-color: #000 !important;
-                        width: 100% !important;
-                        height: 100% !important;
                         object-fit: contain !important;
-                        z-index: 1 !important;
-                        position: relative !important;
+                        z-index: 10 !important;
+                        -webkit-transform: translateZ(0) !important;
+                        transform: translateZ(0) !important;
                     }
 
-                    /* YouTube mobile player fixes */
+                    /* YouTube player container fixes */
                     .html5-video-player,
                     .html5-video-container,
                     #player-container-inner,
-                    #movie_player {
+                    #movie_player,
+                    ytd-player,
+                    #ytd-player,
+                    .ytd-player {
                         width: 100% !important;
-                        height: auto !important;
                         min-height: 200px !important;
                         opacity: 1 !important;
                         visibility: visible !important;
                         position: relative !important;
+                        background-color: #000 !important;
+                        -webkit-transform: translateZ(0) !important;
                     }
 
-                    /* Force YouTube video to show */
+                    /* Mobile YouTube specific */
                     ytm-single-column-watch-next-results-renderer,
-                    .watch-below-the-player {
-                        margin-top: 0 !important;
+                    .watch-below-the-player,
+                    #player {
+                        background-color: #000 !important;
                     }
 
-                    /* Fix iframe embedding */
-                    iframe[src*="youtube"], iframe[src*="video"] {
-                        max-width: 100% !important;
+                    /* YouTube Shorts video fix */
+                    ytd-reel-video-renderer video,
+                    ytm-reel-video-renderer video {
+                        width: 100% !important;
+                        height: 100% !important;
+                        object-fit: cover !important;
+                    }
+
+                    /* ============ PINTEREST FIXES ============ */
+                    /* Pinterest image containers */
+                    [data-test-id="pin-image"],
+                    [data-test-id="pinImg"],
+                    .GrowthUnauthPinImage,
+                    .PinImage,
+                    .hCL.kVc,
+                    div[data-test-id="pin"] img,
+                    .Jea.MIw.Hsu {
+                        width: 100% !important;
                         height: auto !important;
-                        min-height: 200px !important;
+                        max-width: 100% !important;
+                        object-fit: contain !important;
+                        opacity: 1 !important;
                         visibility: visible !important;
                     }
 
-                    /* Fix image rendering */
-                    img {
-                        max-width: 100% !important;
-                        height: auto !important;
+                    /* Pinterest lazy-loaded images */
+                    img[src*="pinimg.com"],
+                    img[data-src*="pinimg.com"] {
+                        opacity: 1 !important;
+                        visibility: visible !important;
                         display: block !important;
-                        object-fit: contain !important;
                     }
 
-                    /* Pinterest image fixes */
-                    [data-test-id="pin-image"], .GrowthUnauthPinImage {
+                    /* Pinterest video player */
+                    .VideoPlayer,
+                    [data-test-id="video-player"],
+                    .hwa.iyn.jzS video {
                         width: 100% !important;
                         height: auto !important;
-                        object-fit: contain !important;
+                        min-height: 200px !important;
+                        background-color: #000 !important;
+                        opacity: 1 !important;
                     }
 
-                    /* Prevent content overflow */
-                    body {
-                        overflow-x: hidden !important;
+                    /* ============ GENERAL IMAGE FIXES ============ */
+                    img:not([src=""]):not([src="data:"]) {
+                        opacity: 1 !important;
+                        visibility: visible !important;
+                    }
+
+                    /* Fix lazy-loaded images */
+                    img[loading="lazy"],
+                    img[data-src],
+                    img.lazyload,
+                    img.lazy {
+                        opacity: 1 !important;
+                        visibility: visible !important;
+                    }
+
+                    /* ============ IFRAME FIXES ============ */
+                    iframe[src*="youtube"],
+                    iframe[src*="youtu.be"],
+                    iframe[src*="youtube-nocookie"],
+                    iframe[src*="video"] {
+                        max-width: 100% !important;
+                        min-height: 200px !important;
+                        visibility: visible !important;
+                        background-color: #000 !important;
                     }
                 `;
                 document.head.appendChild(style);
 
-                // Function to force video element visibility
-                function forceVideoVisibility() {
-                    // Find all video elements
-                    var videos = document.querySelectorAll('video');
+                // Function to fix YouTube video elements
+                function fixYouTubeVideo() {
+                    var videos = document.querySelectorAll('video, .html5-main-video');
                     videos.forEach(function(video) {
-                        video.style.opacity = '1';
-                        video.style.visibility = 'visible';
-                        video.style.display = 'block';
-                        video.style.backgroundColor = '#000';
+                        video.style.cssText += 'opacity:1!important;visibility:visible!important;display:block!important;background:#000!important;';
+
+                        // Set playsinline attribute for proper mobile playback
+                        video.setAttribute('playsinline', '');
+                        video.setAttribute('webkit-playsinline', '');
+
+                        // Force hardware acceleration
+                        video.style.transform = 'translateZ(0)';
+                        video.style.webkitTransform = 'translateZ(0)';
 
                         // Force repaint
                         video.offsetHeight;
-
-                        // Try to play if paused (for autoplay videos)
-                        if (video.paused && video.autoplay) {
-                            video.play().catch(function() {});
-                        }
                     });
 
-                    // Fix YouTube player containers
-                    var players = document.querySelectorAll('.html5-video-player, #movie_player');
+                    // Fix player containers
+                    var players = document.querySelectorAll('.html5-video-player, #movie_player, ytd-player, #player');
                     players.forEach(function(player) {
-                        player.style.opacity = '1';
-                        player.style.visibility = 'visible';
-                        player.style.position = 'relative';
+                        player.style.cssText += 'opacity:1!important;visibility:visible!important;background:#000!important;';
                     });
                 }
 
-                // Apply fixes immediately
-                forceVideoVisibility();
+                // Function to fix Pinterest images
+                function fixPinterestImages() {
+                    // Force lazy images to load
+                    var lazyImages = document.querySelectorAll('img[data-src], img[loading="lazy"]');
+                    lazyImages.forEach(function(img) {
+                        if (img.dataset.src && !img.src) {
+                            img.src = img.dataset.src;
+                        }
+                        img.style.opacity = '1';
+                        img.style.visibility = 'visible';
+                    });
 
-                // Monitor for dynamically loaded videos (YouTube loads content dynamically)
-                var observer = new MutationObserver(function(mutations) {
-                    mutations.forEach(function(mutation) {
-                        if (mutation.addedNodes.length) {
-                            mutation.addedNodes.forEach(function(node) {
-                                if (node.tagName === 'VIDEO' ||
-                                    (node.querySelector && node.querySelector('video'))) {
-                                    setTimeout(forceVideoVisibility, 100);
-                                }
-                            });
+                    // Fix Pinterest specific images
+                    var pinImages = document.querySelectorAll('[data-test-id="pin-image"] img, img[src*="pinimg.com"]');
+                    pinImages.forEach(function(img) {
+                        img.style.cssText += 'opacity:1!important;visibility:visible!important;display:block!important;';
+                        // Force image reload if needed
+                        if (img.complete && img.naturalHeight === 0) {
+                            var src = img.src;
+                            img.src = '';
+                            img.src = src;
                         }
                     });
+
+                    // Fix Pinterest videos
+                    var pinVideos = document.querySelectorAll('[data-test-id="video-player"] video, .VideoPlayer video');
+                    pinVideos.forEach(function(video) {
+                        video.style.cssText += 'opacity:1!important;visibility:visible!important;background:#000!important;';
+                        video.setAttribute('playsinline', '');
+                    });
+                }
+
+                // Apply fixes based on current site
+                function applyFixes() {
+                    var hostname = window.location.hostname;
+
+                    if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
+                        fixYouTubeVideo();
+                    } else if (hostname.includes('pinterest')) {
+                        fixPinterestImages();
+                    } else {
+                        // Generic fixes for other sites
+                        fixYouTubeVideo();
+                        fixPinterestImages();
+                    }
+                }
+
+                // Apply fixes immediately
+                applyFixes();
+
+                // Monitor for dynamically loaded content
+                var observer = new MutationObserver(function(mutations) {
+                    var shouldFix = mutations.some(function(mutation) {
+                        return mutation.addedNodes.length > 0;
+                    });
+                    if (shouldFix) {
+                        setTimeout(applyFixes, 100);
+                    }
                 });
 
-                // Start observing document for changes
-                observer.observe(document.body, {
+                observer.observe(document.body || document.documentElement, {
                     childList: true,
                     subtree: true
                 });
 
-                // Re-apply fixes periodically for first 5 seconds (for slow-loading pages)
+                // Re-apply fixes periodically for first 10 seconds
                 var fixCount = 0;
                 var fixInterval = setInterval(function() {
-                    forceVideoVisibility();
+                    applyFixes();
                     fixCount++;
-                    if (fixCount >= 10) {
+                    if (fixCount >= 20) {
                         clearInterval(fixInterval);
                     }
                 }, 500);
