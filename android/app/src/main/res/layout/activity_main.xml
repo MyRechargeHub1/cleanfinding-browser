@@ -1,280 +1,292 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Root FrameLayout allows customViewContainer to overlay on top of browser content -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="@color/background">
 
-    <!-- Tab Bar -->
+    <!-- Main Browser Content -->
     <LinearLayout
-        android:id="@+id/tabBar"
+        android:id="@+id/mainContent"
         android:layout_width="match_parent"
-        android:layout_height="40dp"
-        android:orientation="horizontal"
-        android:background="@color/tab_background"
-        android:gravity="center_vertical">
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
-        <HorizontalScrollView
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:scrollbars="none">
-
-            <LinearLayout
-                android:id="@+id/tabContainer"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:orientation="horizontal"
-                android:paddingHorizontal="4dp" />
-
-        </HorizontalScrollView>
-
-        <!-- New Tab Button -->
-        <ImageButton
-            android:id="@+id/newTabButton"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:src="@drawable/ic_add"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="New Tab"
-            android:tint="@color/icon_tint"
-            android:layout_marginEnd="4dp" />
-
-    </LinearLayout>
-
-    <!-- URL Bar -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="52dp"
-        android:orientation="horizontal"
-        android:background="@color/toolbar_background"
-        android:paddingHorizontal="4dp"
-        android:gravity="center_vertical"
-        android:elevation="4dp">
-
-        <!-- Back Button -->
-        <ImageButton
-            android:id="@+id/backButton"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:src="@drawable/ic_back"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Back"
-            android:tint="@color/icon_tint" />
-
-        <!-- Forward Button -->
-        <ImageButton
-            android:id="@+id/forwardButton"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:src="@drawable/ic_forward"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Forward"
-            android:tint="@color/icon_tint" />
-
-        <!-- URL Input Container with Privacy Indicator -->
+        <!-- Tab Bar -->
         <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="36dp"
-            android:layout_weight="1"
-            android:layout_marginHorizontal="4dp"
-            android:background="@drawable/url_background"
+            android:id="@+id/tabBar"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
             android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingStart="12dp"
-            android:paddingEnd="4dp">
+            android:background="@color/tab_background"
+            android:gravity="center_vertical">
 
-            <!-- HTTPS Lock Icon -->
-            <TextView
-                android:id="@+id/httpsIcon"
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:text="🔒"
-                android:textSize="12sp"
-                android:visibility="gone"
-                android:layout_marginEnd="4dp"
-                android:gravity="center" />
-
-            <!-- URL Input -->
-            <EditText
-                android:id="@+id/urlEditText"
+            <HorizontalScrollView
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:background="@android:color/transparent"
-                android:hint="Search or enter URL"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:id="@+id/tabContainer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="4dp" />
+
+            </HorizontalScrollView>
+
+            <!-- New Tab Button -->
+            <ImageButton
+                android:id="@+id/newTabButton"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/ic_add"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="New Tab"
+                android:tint="@color/icon_tint"
+                android:layout_marginEnd="4dp" />
+
+        </LinearLayout>
+
+        <!-- URL Bar -->
+        <LinearLayout
+            android:id="@+id/urlBar"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:orientation="horizontal"
+            android:background="@color/toolbar_background"
+            android:paddingHorizontal="4dp"
+            android:gravity="center_vertical"
+            android:elevation="4dp">
+
+            <!-- Back Button -->
+            <ImageButton
+                android:id="@+id/backButton"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/ic_back"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Back"
+                android:tint="@color/icon_tint" />
+
+            <!-- Forward Button -->
+            <ImageButton
+                android:id="@+id/forwardButton"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/ic_forward"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Forward"
+                android:tint="@color/icon_tint" />
+
+            <!-- URL Input Container with Privacy Indicator -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:layout_marginHorizontal="4dp"
+                android:background="@drawable/url_background"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="12dp"
+                android:paddingEnd="4dp">
+
+                <!-- HTTPS Lock Icon -->
+                <TextView
+                    android:id="@+id/httpsIcon"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:text="🔒"
+                    android:textSize="12sp"
+                    android:visibility="gone"
+                    android:layout_marginEnd="4dp"
+                    android:gravity="center" />
+
+                <!-- URL Input -->
+                <EditText
+                    android:id="@+id/urlEditText"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:background="@android:color/transparent"
+                    android:hint="Search or enter URL"
+                    android:textColorHint="@color/hint_text"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp"
+                    android:singleLine="true"
+                    android:imeOptions="actionGo"
+                    android:inputType="textUri" />
+
+                <!-- Privacy Grade Badge -->
+                <TextView
+                    android:id="@+id/privacyGradeBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="24dp"
+                    android:paddingHorizontal="6dp"
+                    android:gravity="center"
+                    android:text="A"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:background="@drawable/privacy_grade_background"
+                    android:visibility="gone"
+                    android:layout_marginStart="4dp" />
+
+            </LinearLayout>
+
+            <!-- Home Button -->
+            <ImageButton
+                android:id="@+id/homeButton"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/ic_home"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Home"
+                android:tint="@color/icon_tint" />
+
+            <!-- Refresh Button -->
+            <ImageButton
+                android:id="@+id/refreshButton"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/ic_refresh"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Refresh"
+                android:tint="@color/icon_tint" />
+
+            <!-- Tabs Counter Button -->
+            <FrameLayout
+                android:id="@+id/tabsButton"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Tabs">
+
+                <TextView
+                    android:id="@+id/tabCountText"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:text="1"
+                    android:textColor="@color/icon_tint"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:background="@drawable/tab_count_background" />
+
+            </FrameLayout>
+
+            <!-- Menu Button -->
+            <ImageButton
+                android:id="@+id/menuButton"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/ic_menu"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Menu"
+                android:tint="@color/icon_tint" />
+
+        </LinearLayout>
+
+        <!-- Find in Page Bar (hidden by default) -->
+        <LinearLayout
+            android:id="@+id/findBar"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:orientation="horizontal"
+            android:background="@color/toolbar_background"
+            android:paddingHorizontal="8dp"
+            android:gravity="center_vertical"
+            android:visibility="gone"
+            android:elevation="4dp">
+
+            <EditText
+                android:id="@+id/findEditText"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:background="@drawable/url_background"
+                android:paddingHorizontal="12dp"
+                android:hint="Find in page"
                 android:textColorHint="@color/hint_text"
                 android:textColor="@color/text_primary"
                 android:textSize="14sp"
                 android:singleLine="true"
-                android:imeOptions="actionGo"
-                android:inputType="textUri" />
+                android:imeOptions="actionSearch"
+                android:inputType="text" />
 
-            <!-- Privacy Grade Badge -->
             <TextView
-                android:id="@+id/privacyGradeBadge"
+                android:id="@+id/findResultsText"
                 android:layout_width="wrap_content"
-                android:layout_height="24dp"
-                android:paddingHorizontal="6dp"
-                android:gravity="center"
-                android:text="A"
-                android:textColor="#FFFFFF"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="8dp"
+                android:textColor="@color/text_secondary"
                 android:textSize="12sp"
-                android:textStyle="bold"
-                android:background="@drawable/privacy_grade_background"
-                android:visibility="gone"
-                android:layout_marginStart="4dp" />
+                android:text="0/0" />
+
+            <ImageButton
+                android:id="@+id/findPrevButton"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/ic_back"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Previous"
+                android:tint="@color/icon_tint" />
+
+            <ImageButton
+                android:id="@+id/findNextButton"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/ic_forward"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Next"
+                android:tint="@color/icon_tint" />
+
+            <ImageButton
+                android:id="@+id/findCloseButton"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/ic_close"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Close"
+                android:tint="@color/icon_tint" />
 
         </LinearLayout>
 
-        <!-- Home Button -->
-        <ImageButton
-            android:id="@+id/homeButton"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:src="@drawable/ic_home"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Home"
-            android:tint="@color/icon_tint" />
-
-        <!-- Refresh Button -->
-        <ImageButton
-            android:id="@+id/refreshButton"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:src="@drawable/ic_refresh"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Refresh"
-            android:tint="@color/icon_tint" />
-
-        <!-- Tabs Counter Button -->
-        <FrameLayout
-            android:id="@+id/tabsButton"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Tabs">
-
-            <TextView
-                android:id="@+id/tabCountText"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_gravity="center"
-                android:gravity="center"
-                android:text="1"
-                android:textColor="@color/icon_tint"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:background="@drawable/tab_count_background" />
-
-        </FrameLayout>
-
-        <!-- Menu Button -->
-        <ImageButton
-            android:id="@+id/menuButton"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:src="@drawable/ic_menu"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Menu"
-            android:tint="@color/icon_tint" />
-
-    </LinearLayout>
-
-    <!-- Find in Page Bar (hidden by default) -->
-    <LinearLayout
-        android:id="@+id/findBar"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:orientation="horizontal"
-        android:background="@color/toolbar_background"
-        android:paddingHorizontal="8dp"
-        android:gravity="center_vertical"
-        android:visibility="gone"
-        android:elevation="4dp">
-
-        <EditText
-            android:id="@+id/findEditText"
-            android:layout_width="0dp"
-            android:layout_height="36dp"
-            android:layout_weight="1"
-            android:background="@drawable/url_background"
-            android:paddingHorizontal="12dp"
-            android:hint="Find in page"
-            android:textColorHint="@color/hint_text"
-            android:textColor="@color/text_primary"
-            android:textSize="14sp"
-            android:singleLine="true"
-            android:imeOptions="actionSearch"
-            android:inputType="text" />
-
-        <TextView
-            android:id="@+id/findResultsText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="8dp"
-            android:textColor="@color/text_secondary"
-            android:textSize="12sp"
-            android:text="0/0" />
-
-        <ImageButton
-            android:id="@+id/findPrevButton"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:src="@drawable/ic_back"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Previous"
-            android:tint="@color/icon_tint" />
-
-        <ImageButton
-            android:id="@+id/findNextButton"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:src="@drawable/ic_forward"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Next"
-            android:tint="@color/icon_tint" />
-
-        <ImageButton
-            android:id="@+id/findCloseButton"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:src="@drawable/ic_close"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Close"
-            android:tint="@color/icon_tint" />
-
-    </LinearLayout>
-
-    <!-- Progress Bar -->
-    <ProgressBar
-        android:id="@+id/progressBar"
-        style="@style/Widget.AppCompat.ProgressBar.Horizontal"
-        android:layout_width="match_parent"
-        android:layout_height="3dp"
-        android:progressTint="@color/progress_color"
-        android:visibility="gone" />
-
-    <!-- Web Content -->
-    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-        android:id="@+id/swipeRefresh"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent">
-
-        <WebView
-            android:id="@+id/webView"
+        <!-- Progress Bar -->
+        <ProgressBar
+            android:id="@+id/progressBar"
+            style="@style/Widget.AppCompat.ProgressBar.Horizontal"
             android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+            android:layout_height="3dp"
+            android:progressTint="@color/progress_color"
+            android:visibility="gone" />
 
-    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+        <!-- Web Content -->
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/swipeRefresh"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
 
-    <!-- Fullscreen Video Container (hidden by default) -->
+            <WebView
+                android:id="@+id/webView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+    </LinearLayout>
+
+    <!-- Fullscreen Video Container - OVERLAYS on top of everything when visible -->
     <FrameLayout
         android:id="@+id/customViewContainer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:visibility="gone"
-        android:background="#000000" />
+        android:background="#000000"
+        android:keepScreenOn="true"
+        android:fitsSystemWindows="true" />
 
-</LinearLayout>
+</FrameLayout>

@@ -501,21 +501,20 @@ class MainActivity : AppCompatActivity() {
                     // CHROME-LIKE: Request landscape orientation for fullscreen video
                     requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
 
-                    // Hide normal content
-                    findViewById<LinearLayout>(R.id.tabBar)?.visibility = View.GONE
-                    findViewById<LinearLayout>(R.id.urlEditText)?.parent?.let {
-                        (it as View).visibility = View.GONE
-                    }
-                    webView.visibility = View.GONE
+                    // Hide main browser content (use the mainContent container)
+                    findViewById<LinearLayout>(R.id.mainContent)?.visibility = View.GONE
 
                     // CHROME-LIKE: Make system bars transparent/hidden for immersive video
                     window.decorView.systemUiVisibility = (
                         View.SYSTEM_UI_FLAG_FULLSCREEN or
                         View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                        View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                        View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+                        View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                     )
 
-                    // Show fullscreen video
+                    // Show fullscreen video container
                     customViewContainer.visibility = View.VISIBLE
                     customViewContainer.setBackgroundColor(android.graphics.Color.BLACK)
                     customViewContainer.addView(customView, FrameLayout.LayoutParams(
@@ -1119,12 +1118,8 @@ class MainActivity : AppCompatActivity() {
                 customViewContainer.removeView(view)
             }
 
-            // Show normal content
-            findViewById<LinearLayout>(R.id.tabBar)?.visibility = View.VISIBLE
-            findViewById<LinearLayout>(R.id.urlEditText)?.parent?.let {
-                (it as View).visibility = View.VISIBLE
-            }
-            webView.visibility = View.VISIBLE
+            // Show main browser content
+            findViewById<LinearLayout>(R.id.mainContent)?.visibility = View.VISIBLE
 
             // Notify the callback that we're done (only once)
             val callback = customViewCallback
@@ -1140,7 +1135,7 @@ class MainActivity : AppCompatActivity() {
             customView = null
             customViewCallback = null
             customViewContainer.visibility = View.GONE
-            webView.visibility = View.VISIBLE
+            findViewById<LinearLayout>(R.id.mainContent)?.visibility = View.VISIBLE
         }
     }
 
