@@ -181,6 +181,10 @@ class MainActivity : AppCompatActivity() {
         // CRITICAL FIX: Enable hardware acceleration for video playback
         wv.setLayerType(View.LAYER_TYPE_HARDWARE, null)
 
+        // Enable nested scrolling for CoordinatorLayout/AppBarLayout integration
+        // This allows the toolbar to scroll away when scrolling the WebView
+        wv.isNestedScrollingEnabled = true
+
         wv.settings.apply {
             // CRITICAL: Always enable JavaScript, DOM storage, and database for search to work
             // Modern websites (including cleanfinding.com search) require these features
@@ -502,7 +506,7 @@ class MainActivity : AppCompatActivity() {
                     requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
 
                     // Hide main browser content (use the mainContent container)
-                    findViewById<LinearLayout>(R.id.mainContent)?.visibility = View.GONE
+                    findViewById<androidx.coordinatorlayout.widget.CoordinatorLayout>(R.id.mainContent)?.visibility = View.GONE
 
                     // CHROME-LIKE: Make system bars transparent/hidden for immersive video
                     window.decorView.systemUiVisibility = (
@@ -1119,7 +1123,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             // Show main browser content
-            findViewById<LinearLayout>(R.id.mainContent)?.visibility = View.VISIBLE
+            findViewById<androidx.coordinatorlayout.widget.CoordinatorLayout>(R.id.mainContent)?.visibility = View.VISIBLE
 
             // Notify the callback that we're done (only once)
             val callback = customViewCallback
@@ -1135,7 +1139,7 @@ class MainActivity : AppCompatActivity() {
             customView = null
             customViewCallback = null
             customViewContainer.visibility = View.GONE
-            findViewById<LinearLayout>(R.id.mainContent)?.visibility = View.VISIBLE
+            findViewById<androidx.coordinatorlayout.widget.CoordinatorLayout>(R.id.mainContent)?.visibility = View.VISIBLE
         }
     }
 
@@ -1272,15 +1276,51 @@ class MainActivity : AppCompatActivity() {
     private fun isBlockedUrl(url: String): Boolean {
         val lowerUrl = url.lowercase()
 
+        // CRITICAL: Whitelist trusted domains - never block these
+        // These are major legitimate websites that should always be accessible
+        val trustedDomains = listOf(
+            "youtube.com", "youtu.be", "m.youtube.com",
+            "google.com", "google.co", "gstatic.com", "googleapis.com",
+            "facebook.com", "instagram.com", "twitter.com", "x.com",
+            "pinterest.com", "linkedin.com", "reddit.com",
+            "amazon.com", "ebay.com", "walmart.com",
+            "wikipedia.org", "wikimedia.org",
+            "github.com", "stackoverflow.com",
+            "cleanfinding.com",
+            "microsoft.com", "apple.com", "netflix.com"
+        )
+
+        // Check if URL is from a trusted domain - if so, don't block
+        for (trusted in trustedDomains) {
+            if (lowerUrl.contains(trusted)) {
+                return false
+            }
+        }
+
+        // Check tracker/ad domains (only block these on non-trusted sites)
         for (domain in blockedDomains) {
             if (lowerUrl.contains(domain)) {
                 return true
             }
         }
 
-        for (keyword in adultDomains) {
-            if (lowerUrl.contains(keyword)) {
-                return true
+        // Check adult content - only check the DOMAIN part, not full URL
+        // This prevents false positives from video titles, search queries, etc.
+        try {
+            val uri = Uri.parse(url)
+            val host = uri.host?.lowercase() ?: ""
+            for (keyword in adultDomains) {
+                if (host.contains(keyword)) {
+                    return true
+                }
+            }
+        } catch (e: Exception) {
+            // If URL parsing fails, do basic check on host-like portion
+            val hostPart = lowerUrl.substringAfter("://").substringBefore("/")
+            for (keyword in adultDomains) {
+                if (hostPart.contains(keyword)) {
+                    return true
+                }
             }
         }
 
