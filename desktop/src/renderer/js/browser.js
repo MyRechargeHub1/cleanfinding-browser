@@ -1,6 +1,6 @@
 /**
  * CleanFinding Browser - Browser Logic
- * @version 1.4.0
+ * @version 1.5.0
  */
 
 // Browser state
@@ -11,8 +11,41 @@ const browser = {
     privacyStats: {
         trackersBlocked: 0,
         cookiesBlocked: 0
-    }
+    },
+    // Scrolling toolbar state
+    isToolbarVisible: true,
+    lastScrollY: 0,
+    SCROLL_THRESHOLD: 30
 };
+
+// Trusted domains - never block these (same as Android)
+const trustedDomains = [
+    'youtube.com', 'youtu.be', 'm.youtube.com',
+    'google.com', 'google.co', 'gstatic.com', 'googleapis.com',
+    'facebook.com', 'instagram.com', 'twitter.com', 'x.com',
+    'pinterest.com', 'linkedin.com', 'reddit.com',
+    'amazon.com', 'ebay.com', 'walmart.com',
+    'wikipedia.org', 'wikimedia.org',
+    'github.com', 'stackoverflow.com',
+    'cleanfinding.com',
+    'microsoft.com', 'apple.com', 'netflix.com'
+];
+
+// Blocked tracker domains
+const blockedDomains = [
+    'google-analytics.com', 'googletagmanager.com', 'doubleclick.net',
+    'facebook.net', 'connect.facebook.net', 'analytics.google.com',
+    'adservice.google.com', 'googlesyndication.com', 'googleadservices.com',
+    'mixpanel.com', 'hotjar.com', 'fullstory.com', 'amplitude.com',
+    'segment.com', 'heapanalytics.com', 'crazyegg.com', 'clarity.ms',
+    'adnxs.com', 'criteo.com', 'taboola.com', 'outbrain.com'
+];
+
+// Adult content keywords (check domain only, not full URL)
+const adultKeywords = [
+    'pornhub', 'xvideos', 'xnxx', 'redtube', 'youporn',
+    'xhamster', 'porn', 'xxx', 'adult'
+];
 
 // DOM Elements
 const elements = {
@@ -31,7 +64,8 @@ const elements = {
     privacyDashboardBtn: document.getElementById('privacy-dashboard-btn'),
     privacyDashboardModal: document.getElementById('privacy-dashboard-modal'),
     aboutModal: document.getElementById('about-modal'),
-    clearDataModal: document.getElementById('clear-data-modal')
+    clearDataModal: document.getElementById('clear-data-modal'),
+    browserChrome: document.querySelector('.browser-chrome')
 };
 
 /**
@@ -294,6 +328,8 @@ function setupWebviewListeners(webview, tab) {
     webview.addEventListener('did-start-loading', () => {
         if (tab.id === browser.activeTabId) {
             updateNavigationButtons();
+            // Show toolbar when loading starts
+            showToolbar();
         }
     });
 
@@ -301,6 +337,33 @@ function setupWebviewListeners(webview, tab) {
         if (tab.id === browser.activeTabId) {
             updateNavigationButtons();
         }
+    });
+
+    // Inject scroll detection after page loads
+    webview.addEventListener('did-finish-load', () => {
+        injectScrollDetection(webview);
+    });
+
+    // Capture console messages for scroll detection
+    webview.addEventListener('console-message', (e) => {
+        if (e.message && e.message.startsWith('__CLEANFINDING_SCROLL__:')) {
+            const scrollY = parseInt(e.message.split(':')[1], 10);
+            if (!isNaN(scrollY) && tab.id === browser.activeTabId) {
+                handleWebviewScroll(scrollY);
+            }
+        }
+    });
+
+    // Handle fullscreen requests (for YouTube videos)
+    webview.addEventListener('enter-html-full-screen', () => {
+        document.body.classList.add('fullscreen-video');
+        elements.browserChrome.style.display = 'none';
+    });
+
+    webview.addEventListener('leave-html-full-screen', () => {
+        document.body.classList.remove('fullscreen-video');
+        elements.browserChrome.style.display = '';
+        showToolbar();
     });
 
     webview.addEventListener('page-title-updated', (e) => {
@@ -332,6 +395,11 @@ function setupWebviewListeners(webview, tab) {
 
     webview.addEventListener('new-window', (e) => {
         e.preventDefault();
+        // Check if the new URL should be blocked
+        if (isBlockedUrl(e.url)) {
+            console.log('Blocked new window URL:', e.url);
+            return;
+        }
         createTab(e.url);
     });
 
@@ -424,6 +492,15 @@ async function navigateToUrl(input) {
         alert('Invalid URL scheme. Only http:// and https:// URLs are allowed.');
         return;
     }
+
+    // Check if URL should be blocked
+    if (isBlockedUrl(url)) {
+        alert('This content has been blocked by CleanFinding Browser for your safety.');
+        return;
+    }
+
+    // Show toolbar when navigating
+    showToolbar();
 
     tab.webview.src = url;
 }
@@ -580,6 +657,131 @@ async function loadDuckPlayerPage(videoId, originalUrl) {
     // Update tracker count
     browser.privacyStats.trackersBlocked++;
     elements.blockedCount.textContent = browser.privacyStats.trackersBlocked;
+}
+
+/**
+ * Check if URL should be blocked (same logic as Android)
+ */
+function isBlockedUrl(url) {
+    const lowerUrl = url.toLowerCase();
+
+    // CRITICAL: Whitelist trusted domains - never block these
+    for (const trusted of trustedDomains) {
+        if (lowerUrl.includes(trusted)) {
+            return false;
+        }
+    }
+
+    // Check tracker/ad domains
+    for (const domain of blockedDomains) {
+        if (lowerUrl.includes(domain)) {
+            return true;
+        }
+    }
+
+    // Check adult content - only check the DOMAIN part, not full URL
+    try {
+        const urlObj = new URL(url);
+        const host = urlObj.hostname.toLowerCase();
+        for (const keyword of adultKeywords) {
+            if (host.includes(keyword)) {
+                return true;
+            }
+        }
+    } catch (e) {
+        // If URL parsing fails, do basic check
+        const hostPart = lowerUrl.split('://')[1]?.split('/')[0] || '';
+        for (const keyword of adultKeywords) {
+            if (hostPart.includes(keyword)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Hide toolbar with animation (Chrome-like scroll behavior)
+ */
+function hideToolbar() {
+    if (!browser.isToolbarVisible) return;
+    browser.isToolbarVisible = false;
+
+    if (elements.browserChrome) {
+        elements.browserChrome.style.transition = 'transform 0.2s ease-out';
+        elements.browserChrome.style.transform = 'translateY(-100%)';
+    }
+}
+
+/**
+ * Show toolbar with animation (Chrome-like scroll behavior)
+ */
+function showToolbar() {
+    if (browser.isToolbarVisible) return;
+    browser.isToolbarVisible = true;
+
+    if (elements.browserChrome) {
+        elements.browserChrome.style.transition = 'transform 0.2s ease-out';
+        elements.browserChrome.style.transform = 'translateY(0)';
+    }
+}
+
+/**
+ * Handle scroll events from webview
+ */
+function handleWebviewScroll(scrollY) {
+    const diff = scrollY - browser.lastScrollY;
+
+    // Only respond to significant scroll changes
+    if (Math.abs(diff) > browser.SCROLL_THRESHOLD) {
+        if (diff > 0 && browser.isToolbarVisible) {
+            // Scrolling DOWN - hide toolbar
+            hideToolbar();
+        } else if (diff < 0 && !browser.isToolbarVisible) {
+            // Scrolling UP - show toolbar
+            showToolbar();
+        }
+    }
+
+    // Always show toolbar when at top of page
+    if (scrollY <= 10 && !browser.isToolbarVisible) {
+        showToolbar();
+    }
+
+    browser.lastScrollY = scrollY;
+}
+
+/**
+ * Inject scroll detection script into webview
+ */
+function injectScrollDetection(webview) {
+    const script = `
+        (function() {
+            if (window._cleanfindingScrollSetup) return;
+            window._cleanfindingScrollSetup = true;
+
+            let lastScrollY = 0;
+            let ticking = false;
+
+            function onScroll() {
+                if (!ticking) {
+                    window.requestAnimationFrame(function() {
+                        // Send scroll position to parent via console (will be captured)
+                        console.log('__CLEANFINDING_SCROLL__:' + window.scrollY);
+                        ticking = false;
+                    });
+                    ticking = true;
+                }
+            }
+
+            window.addEventListener('scroll', onScroll, { passive: true });
+        })();
+    `;
+
+    webview.executeJavaScript(script).catch(err => {
+        // Ignore errors - script might not be ready yet
+    });
 }
 
 // Initialize on load

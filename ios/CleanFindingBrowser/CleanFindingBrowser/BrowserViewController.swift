@@ -12,6 +12,19 @@ class BrowserViewController: UIViewController {
 
     private let homeURL = URL(string: "https://cleanfinding.com")!
 
+    // CRITICAL: Trusted domains - never block these (same as Android)
+    private let trustedDomains = [
+        "youtube.com", "youtu.be", "m.youtube.com",
+        "google.com", "google.co", "gstatic.com", "googleapis.com",
+        "facebook.com", "instagram.com", "twitter.com", "x.com",
+        "pinterest.com", "linkedin.com", "reddit.com",
+        "amazon.com", "ebay.com", "walmart.com",
+        "wikipedia.org", "wikimedia.org",
+        "github.com", "stackoverflow.com",
+        "cleanfinding.com",
+        "microsoft.com", "apple.com", "netflix.com"
+    ]
+
     // Blocked domains
     private let blockedDomains = [
         "google-analytics.com", "googletagmanager.com", "doubleclick.net",
@@ -22,11 +35,19 @@ class BrowserViewController: UIViewController {
         "adnxs.com", "criteo.com", "taboola.com", "outbrain.com"
     ]
 
-    // Adult content keywords
+    // Adult content keywords (check domain only, not full URL)
     private let adultKeywords = [
         "pornhub", "xvideos", "xnxx", "redtube", "youporn",
         "xhamster", "porn", "xxx", "adult"
     ]
+
+    // Scrolling toolbar state
+    private var isToolbarVisible = true
+    private var lastScrollY: CGFloat = 0
+    private let scrollThreshold: CGFloat = 30
+    private var urlBarTopConstraint: NSLayoutConstraint?
+    private var toolbarBottomConstraint: NSLayoutConstraint?
+    private var urlBarView: UIView?
 
     // MARK: - Lifecycle
 
@@ -137,6 +158,7 @@ class BrowserViewController: UIViewController {
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = true
         webView.scrollView.contentInsetAdjustmentBehavior = .automatic
+        webView.scrollView.delegate = self  // Add scroll delegate for toolbar hide/show
         webView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(webView)
 
@@ -208,15 +230,35 @@ class BrowserViewController: UIViewController {
     private func isBlockedURL(_ url: String) -> Bool {
         let lowerURL = url.lowercased()
 
+        // CRITICAL: Whitelist trusted domains - never block these
+        for trusted in trustedDomains {
+            if lowerURL.contains(trusted) {
+                return false
+            }
+        }
+
+        // Check tracker/ad domains
         for domain in blockedDomains {
             if lowerURL.contains(domain) {
                 return true
             }
         }
 
-        for keyword in adultKeywords {
-            if lowerURL.contains(keyword) {
-                return true
+        // Check adult content - only check the DOMAIN part, not full URL
+        // This prevents false positives from video titles, search queries, etc.
+        if let urlObj = URL(string: url), let host = urlObj.host?.lowercased() {
+            for keyword in adultKeywords {
+                if host.contains(keyword) {
+                    return true
+                }
+            }
+        } else {
+            // Fallback: basic host extraction
+            let hostPart = lowerURL.components(separatedBy: "://").last?.components(separatedBy: "/").first ?? ""
+            for keyword in adultKeywords {
+                if hostPart.contains(keyword) {
+                    return true
+                }
             }
         }
 
@@ -263,6 +305,14 @@ class BrowserViewController: UIViewController {
                 return;
             }
 
+            // CRITICAL: Skip ad blocking on YouTube to prevent video playback issues
+            // YouTube's internal classes contain "ad" patterns that our selectors would incorrectly match
+            if (window.location.hostname.indexOf('youtube.com') !== -1 ||
+                window.location.hostname.indexOf('youtu.be') !== -1) {
+                console.log('CleanFinding: Skipping ad blocking on YouTube for proper video playback');
+                return;
+            }
+
             var blockedDomains = [\(domainsJSON)];
 
             // Override fetch
@@ -276,7 +326,7 @@ class BrowserViewController: UIViewController {
                 return originalFetch.apply(this, arguments);
             };
 
-            // Remove ad containers
+            // Remove ad containers (skip on YouTube)
             function removeAds() {
                 var selectors = ['[class*="ad-"]', '[class*="ads-"]', '[id*="ad-"]', 'ins.adsbygoogle'];
                 selectors.forEach(function(selector) {
@@ -394,5 +444,56 @@ extension BrowserViewController: WKUIDelegate {
             webView.load(navigationAction.request)
         }
         return nil
+    }
+}
+
+// MARK: - UIScrollViewDelegate (Chrome-like scrolling toolbar)
+
+extension BrowserViewController: UIScrollViewDelegate {
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        let currentScrollY = scrollView.contentOffset.y
+        let diff = currentScrollY - lastScrollY
+
+        // Only respond to significant scroll changes
+        if abs(diff) > scrollThreshold {
+            if diff > 0 && isToolbarVisible && currentScrollY > 50 {
+                // Scrolling DOWN - hide toolbar
+                hideToolbar()
+            } else if diff < 0 && !isToolbarVisible {
+                // Scrolling UP - show toolbar
+                showToolbar()
+            }
+        }
+
+        // Always show toolbar when at top of page
+        if currentScrollY <= 10 && !isToolbarVisible {
+            showToolbar()
+        }
+
+        lastScrollY = currentScrollY
+    }
+
+    private func hideToolbar() {
+        guard isToolbarVisible else { return }
+        isToolbarVisible = false
+
+        UIView.animate(withDuration: 0.2) {
+            // Hide URL bar (slide up)
+            self.view.subviews.first?.transform = CGAffineTransform(translationX: 0, y: -56)
+            // Hide toolbar (slide down)
+            self.toolbar.transform = CGAffineTransform(translationX: 0, y: 44)
+        }
+    }
+
+    private func showToolbar() {
+        guard !isToolbarVisible else { return }
+        isToolbarVisible = true
+
+        UIView.animate(withDuration: 0.2) {
+            // Show URL bar
+            self.view.subviews.first?.transform = .identity
+            // Show toolbar
+            self.toolbar.transform = .identity
+        }
     }
 }
