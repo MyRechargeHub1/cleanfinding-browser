@@ -69,6 +69,12 @@ class MainActivity : AppCompatActivity() {
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
     private lateinit var customViewContainer: FrameLayout
 
+    // Scrolling toolbar support
+    private lateinit var appBarLayout: com.google.android.material.appbar.AppBarLayout
+    private var lastScrollY = 0
+    private var isToolbarVisible = true
+    private val SCROLL_THRESHOLD = 10  // Minimum scroll distance to trigger hide/show
+
     // Tracker domains to block
     private val blockedDomains = listOf(
         "google-analytics.com", "googletagmanager.com", "doubleclick.net",
@@ -174,6 +180,7 @@ class MainActivity : AppCompatActivity() {
         httpsIcon = findViewById(R.id.httpsIcon)
         privacyGradeBadge = findViewById(R.id.privacyGradeBadge)
         customViewContainer = findViewById(R.id.customViewContainer)
+        appBarLayout = findViewById(R.id.appBarLayout)
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -182,8 +189,30 @@ class MainActivity : AppCompatActivity() {
         wv.setLayerType(View.LAYER_TYPE_HARDWARE, null)
 
         // Enable nested scrolling for CoordinatorLayout/AppBarLayout integration
-        // This allows the toolbar to scroll away when scrolling the WebView
         wv.isNestedScrollingEnabled = true
+
+        // CHROME-LIKE: Add scroll listener to hide/show toolbar based on scroll direction
+        wv.setOnScrollChangeListener { _, _, scrollY, _, oldScrollY ->
+            val diff = scrollY - oldScrollY
+
+            // Only respond to significant scroll changes
+            if (Math.abs(diff) > SCROLL_THRESHOLD) {
+                if (diff > 0 && isToolbarVisible) {
+                    // Scrolling DOWN - hide toolbar
+                    hideToolbar()
+                } else if (diff < 0 && !isToolbarVisible) {
+                    // Scrolling UP - show toolbar
+                    showToolbar()
+                }
+            }
+
+            // Always show toolbar when at top of page
+            if (scrollY == 0 && !isToolbarVisible) {
+                showToolbar()
+            }
+
+            lastScrollY = scrollY
+        }
 
         wv.settings.apply {
             // CRITICAL: Always enable JavaScript, DOM storage, and database for search to work
@@ -1093,6 +1122,35 @@ class MainActivity : AppCompatActivity() {
 
         // Reload the current page
         webView.reload()
+
+        // Show toolbar when refreshing
+        showToolbar()
+    }
+
+    /**
+     * Hide the toolbar with animation (Chrome-like scroll behavior)
+     */
+    private fun hideToolbar() {
+        if (!isToolbarVisible) return
+        isToolbarVisible = false
+
+        appBarLayout.animate()
+            .translationY(-appBarLayout.height.toFloat())
+            .setDuration(200)
+            .start()
+    }
+
+    /**
+     * Show the toolbar with animation (Chrome-like scroll behavior)
+     */
+    private fun showToolbar() {
+        if (isToolbarVisible) return
+        isToolbarVisible = true
+
+        appBarLayout.animate()
+            .translationY(0f)
+            .setDuration(200)
+            .start()
 
         // The refresh indicator will be hidden in onPageFinished
     }
