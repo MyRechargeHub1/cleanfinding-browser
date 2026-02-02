@@ -20,15 +20,14 @@
             android:background="@color/toolbar_background"
             app:elevation="4dp">
 
-            <!-- Tab Bar - scrolls away when scrolling down -->
+            <!-- Tab Bar -->
             <LinearLayout
                 android:id="@+id/tabBar"
                 android:layout_width="match_parent"
                 android:layout_height="40dp"
                 android:orientation="horizontal"
                 android:background="@color/tab_background"
-                android:gravity="center_vertical"
-                app:layout_scrollFlags="scroll|enterAlways|snap">
+                android:gravity="center_vertical">
 
                 <HorizontalScrollView
                     android:layout_width="0dp"
@@ -58,7 +57,7 @@
 
             </LinearLayout>
 
-            <!-- URL Bar - scrolls away when scrolling down -->
+            <!-- URL Bar -->
             <LinearLayout
                 android:id="@+id/urlBar"
                 android:layout_width="match_parent"
@@ -66,8 +65,7 @@
                 android:orientation="horizontal"
                 android:background="@color/toolbar_background"
                 android:paddingHorizontal="4dp"
-                android:gravity="center_vertical"
-                app:layout_scrollFlags="scroll|enterAlways|snap">
+                android:gravity="center_vertical">
 
                 <!-- Back Button -->
                 <ImageButton
