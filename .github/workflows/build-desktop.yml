@@ -118,9 +118,8 @@ jobs:
         working-directory: ./desktop
 
       - name: Build Linux
-        run: npx electron-builder --linux --publish never
+        run: npx electron-builder --linux AppImage --x64 --publish never
         working-directory: ./desktop
-        continue-on-error: true
 
       - name: Debug - Check dist
         run: ls -la dist/ || echo "No dist folder"
