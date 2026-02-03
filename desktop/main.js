@@ -410,9 +410,6 @@ ipcMain.handle('get-duck-player-page', (event, videoId, timestamp) => {
 });
 
 /**
- * Validate URL scheme (security)
- */
-/**
  * Clear data for a specific site/domain
  */
 ipcMain.handle('clear-site-data', async (event, domain) => {
