@@ -1,7 +1,7 @@
 {
   "name": "cleanfinding-browser-desktop",
   "productName": "CleanFinding Browser",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Privacy-focused, family-safe browser for Windows, macOS, and Linux",
   "main": "main.js",
   "scripts": {
