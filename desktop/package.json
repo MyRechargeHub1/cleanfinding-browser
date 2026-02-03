@@ -50,14 +50,7 @@
       "main.js",
       "preload.js",
       "src/**/*",
-      "!src/**/*.{ts,map}",
-      "../shared/privacy-handlers/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "../shared/privacy-handlers",
-        "to": "privacy-handlers"
-      }
+      "!src/**/*.{ts,map}"
     ],
     "win": {
       "target": [
