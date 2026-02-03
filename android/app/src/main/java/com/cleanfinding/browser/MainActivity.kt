@@ -1093,6 +1093,18 @@ class MainActivity : AppCompatActivity() {
                     translatePage()
                     true
                 }
+                R.id.menu_page_info -> {
+                    showPageInfo()
+                    true
+                }
+                R.id.menu_read_aloud -> {
+                    toggleTextToSpeech()
+                    true
+                }
+                R.id.menu_clear_site_data -> {
+                    clearCurrentSiteData()
+                    true
+                }
                 R.id.menu_desktop_site -> {
                     toggleDesktopMode()
                     true
@@ -1526,6 +1538,152 @@ class MainActivity : AppCompatActivity() {
         val translateUrl = "https://translate.google.com/translate?sl=auto&tl=en&u=${Uri.encode(currentUrl)}"
         webView.loadUrl(translateUrl)
         Toast.makeText(this, "Translating page...", Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * Show page information dialog (SSL, trackers blocked, etc.)
+     */
+    private fun showPageInfo() {
+        val url = webView.url ?: "No URL"
+        val title = webView.title ?: "No title"
+
+        // Determine SSL status
+        val isHttps = url.startsWith("https://")
+        val sslStatus = if (isHttps) "Secure (HTTPS)" else "Not Secure (HTTP)"
+        val sslIcon = if (isHttps) "🔒" else "⚠️"
+
+        // Get domain
+        val domain = try {
+            Uri.parse(url).host ?: "Unknown"
+        } catch (e: Exception) {
+            "Unknown"
+        }
+
+        // Build info message
+        val infoMessage = """
+            |$sslIcon Connection: $sslStatus
+            |
+            |📍 Domain: $domain
+            |
+            |🛡️ Trackers Blocked: $currentPageTrackersBlocked
+            |
+            |📄 Page Title: $title
+            |
+            |🔗 Full URL: $url
+        """.trimMargin()
+
+        AlertDialog.Builder(this)
+            .setTitle("Page Information")
+            .setMessage(infoMessage)
+            .setPositiveButton("OK", null)
+            .setNeutralButton("Copy URL") { _, _ ->
+                copyUrlToClipboard()
+            }
+            .show()
+    }
+
+    /**
+     * Read page content aloud using Text-to-Speech
+     */
+    private var textToSpeech: android.speech.tts.TextToSpeech? = null
+    private var isSpeaking = false
+
+    private fun toggleTextToSpeech() {
+        if (isSpeaking) {
+            // Stop speaking
+            textToSpeech?.stop()
+            isSpeaking = false
+            Toast.makeText(this, "Stopped reading", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Initialize TTS if needed
+        if (textToSpeech == null) {
+            textToSpeech = android.speech.tts.TextToSpeech(this) { status ->
+                if (status == android.speech.tts.TextToSpeech.SUCCESS) {
+                    textToSpeech?.language = java.util.Locale.getDefault()
+                    extractAndSpeak()
+                } else {
+                    Toast.makeText(this, "Text-to-Speech not available", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } else {
+            extractAndSpeak()
+        }
+    }
+
+    private fun extractAndSpeak() {
+        // Extract text content from page
+        val extractScript = """
+            (function() {
+                var article = document.querySelector('article') ||
+                              document.querySelector('[role="main"]') ||
+                              document.querySelector('main') ||
+                              document.body;
+
+                var text = article.innerText || article.textContent || '';
+                // Clean up and limit text
+                text = text.replace(/\\s+/g, ' ').trim();
+                return text.substring(0, 5000); // Limit to 5000 chars
+            })();
+        """.trimIndent()
+
+        webView.evaluateJavascript(extractScript) { result ->
+            val text = result?.replace("\"", "")?.replace("\\n", " ")?.trim() ?: ""
+            if (text.isNotEmpty() && text != "null") {
+                isSpeaking = true
+                textToSpeech?.speak(text, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, "page_content")
+                Toast.makeText(this, "Reading page...", Toast.LENGTH_SHORT).show()
+
+                // Set listener to know when done
+                textToSpeech?.setOnUtteranceCompletedListener {
+                    runOnUiThread {
+                        isSpeaking = false
+                    }
+                }
+            } else {
+                Toast.makeText(this, "No text content found", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    /**
+     * Clear data for current site only
+     */
+    private fun clearCurrentSiteData() {
+        val url = webView.url ?: return
+        val domain = try {
+            Uri.parse(url).host ?: return
+        } catch (e: Exception) {
+            return
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Clear Site Data")
+            .setMessage("Clear all data for $domain?\n\nThis includes cookies, cache, and stored data.")
+            .setPositiveButton("Clear") { _, _ ->
+                // Clear cookies for this domain
+                val cookieManager = CookieManager.getInstance()
+                val cookies = cookieManager.getCookie(url)
+                if (cookies != null) {
+                    // Remove cookies by setting them to expired
+                    cookies.split(";").forEach { cookie ->
+                        val cookieName = cookie.split("=")[0].trim()
+                        cookieManager.setCookie(url, "$cookieName=; Expires=Thu, 01 Jan 1970 00:00:00 GMT")
+                    }
+                    cookieManager.flush()
+                }
+
+                // Clear WebView cache
+                webView.clearCache(true)
+
+                // Reload page
+                webView.reload()
+
+                Toast.makeText(this, "Site data cleared for $domain", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     // Desktop mode - Chrome-like implementation

@@ -52,6 +52,15 @@
         android:id="@+id/menu_translate"
         android:title="Translate Page" />
     <item
+        android:id="@+id/menu_page_info"
+        android:title="Page Info" />
+    <item
+        android:id="@+id/menu_read_aloud"
+        android:title="Read Aloud" />
+    <item
+        android:id="@+id/menu_clear_site_data"
+        android:title="Clear Site Data" />
+    <item
         android:id="@+id/menu_desktop_site"
         android:title="Desktop site"
         android:checkable="true" />
