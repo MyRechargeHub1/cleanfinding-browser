@@ -35,8 +35,9 @@ jobs:
           Copy-Item -Recurse -Force "shared/privacy-handlers" "desktop/shared/"
 
       - name: Build Windows
-        run: npx electron-builder --win --publish never 2>&1 || true
+        run: npx electron-builder --win --publish never
         working-directory: ./desktop
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -44,8 +45,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-builds
-          path: |
-            desktop/dist/*.exe
+          path: desktop/dist/*.exe
+          if-no-files-found: warn
           retention-days: 5
 
   build-macos:
@@ -70,8 +71,9 @@ jobs:
           cp -r shared/privacy-handlers desktop/shared/
 
       - name: Build macOS
-        run: npx electron-builder --mac --publish never 2>&1 || true
+        run: npx electron-builder --mac --publish never
         working-directory: ./desktop
+        continue-on-error: true
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
@@ -80,6 +82,7 @@ jobs:
           path: |
             desktop/dist/*.dmg
             desktop/dist/*.zip
+          if-no-files-found: warn
           retention-days: 5
 
   build-linux:
@@ -115,8 +118,9 @@ jobs:
         working-directory: ./desktop
 
       - name: Build Linux
-        run: npx electron-builder --linux --publish never 2>&1 || true
+        run: npx electron-builder --linux --publish never
         working-directory: ./desktop
+        continue-on-error: true
 
       - name: Debug - Check dist
         run: ls -la dist/ || echo "No dist folder"
@@ -130,6 +134,7 @@ jobs:
             desktop/dist/*.AppImage
             desktop/dist/*.deb
             desktop/dist/*.rpm
+          if-no-files-found: warn
           retention-days: 5
 
   create-release:
@@ -149,7 +154,8 @@ jobs:
           path: dist
 
       - name: Display downloaded files
-        run: ls -R dist
+        run: ls -R dist || echo "No dist directory"
+        continue-on-error: true
 
       - name: Get version
         id: version
