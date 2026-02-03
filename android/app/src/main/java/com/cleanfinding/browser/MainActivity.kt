@@ -14,6 +14,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.provider.MediaStore
+import android.content.ContentValues
 import android.speech.RecognizerIntent
 import android.util.Rational
 import android.view.GestureDetector
@@ -120,7 +122,7 @@ class MainActivity : AppCompatActivity() {
             if (!matches.isNullOrEmpty()) {
                 val query = matches[0]
                 urlEditText.setText(query)
-                navigateToUrl(query)
+                loadUrl(query)
             }
         }
     }
@@ -1753,28 +1755,54 @@ class MainActivity : AppCompatActivity() {
             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
             val filename = "CleanFinding_$timestamp.png"
 
-            val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
-            val cleanfindingDir = File(picturesDir, "CleanFinding")
-            if (!cleanfindingDir.exists()) {
-                cleanfindingDir.mkdirs()
-            }
+            val savedUri: Uri? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Use MediaStore for Android 10+
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.Images.Media.DISPLAY_NAME, filename)
+                    put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+                    put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/CleanFinding")
+                    put(MediaStore.Images.Media.IS_PENDING, 1)
+                }
 
-            val file = File(cleanfindingDir, filename)
-            FileOutputStream(file).use { out ->
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+                uri?.let {
+                    contentResolver.openOutputStream(it)?.use { out ->
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                    }
+                    contentValues.clear()
+                    contentValues.put(MediaStore.Images.Media.IS_PENDING, 0)
+                    contentResolver.update(it, contentValues, null, null)
+                }
+                uri
+            } else {
+                // Legacy storage for Android 9 and below
+                @Suppress("DEPRECATION")
+                val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+                val cleanfindingDir = File(picturesDir, "CleanFinding")
+                if (!cleanfindingDir.exists()) {
+                    cleanfindingDir.mkdirs()
+                }
+
+                val file = File(cleanfindingDir, filename)
+                FileOutputStream(file).use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                }
+                Uri.fromFile(file)
             }
 
             Toast.makeText(this, "Screenshot saved: $filename", Toast.LENGTH_LONG).show()
 
             // Offer to share
-            AlertDialog.Builder(this)
-                .setTitle("Screenshot Saved")
-                .setMessage("Would you like to share this screenshot?")
-                .setPositiveButton("Share") { _, _ ->
-                    shareScreenshot(file)
-                }
-                .setNegativeButton("Close", null)
-                .show()
+            savedUri?.let { uri ->
+                AlertDialog.Builder(this)
+                    .setTitle("Screenshot Saved")
+                    .setMessage("Would you like to share this screenshot?")
+                    .setPositiveButton("Share") { _, _ ->
+                        shareScreenshotUri(uri)
+                    }
+                    .setNegativeButton("Close", null)
+                    .show()
+            }
 
         } catch (e: Exception) {
             android.util.Log.e("Screenshot", "Error taking screenshot: ${e.message}")
@@ -1783,16 +1811,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Share a screenshot file
+     * Share a screenshot by URI (for MediaStore and FileProvider)
      */
-    private fun shareScreenshot(file: File) {
+    private fun shareScreenshotUri(uri: Uri) {
         try {
-            val uri = FileProvider.getUriForFile(
-                this,
-                "${packageName}.fileprovider",
-                file
-            )
-
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                 type = "image/png"
                 putExtra(Intent.EXTRA_STREAM, uri)
