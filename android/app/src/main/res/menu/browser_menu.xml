@@ -61,6 +61,12 @@
         android:id="@+id/menu_clear_site_data"
         android:title="Clear Site Data" />
     <item
+        android:id="@+id/menu_voice_search"
+        android:title="Voice Search" />
+    <item
+        android:id="@+id/menu_screenshot"
+        android:title="Screenshot" />
+    <item
         android:id="@+id/menu_desktop_site"
         android:title="Desktop site"
         android:checkable="true" />

@@ -1,6 +1,7 @@
 package com.cleanfinding.browser
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.app.PictureInPictureParams
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -8,9 +9,12 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.speech.RecognizerIntent
 import android.util.Rational
 import android.view.GestureDetector
 import android.view.KeyEvent
@@ -20,11 +24,18 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.webkit.*
 import android.widget.*
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import java.io.File
+import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
@@ -99,6 +110,20 @@ class MainActivity : AppCompatActivity() {
     private lateinit var gestureDetector: GestureDetector
     private val SWIPE_THRESHOLD = 100
     private val SWIPE_VELOCITY_THRESHOLD = 100
+
+    // Voice search launcher
+    private val voiceSearchLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val matches = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            if (!matches.isNullOrEmpty()) {
+                val query = matches[0]
+                urlEditText.setText(query)
+                navigateToUrl(query)
+            }
+        }
+    }
 
     // Tracker domains to block
     private val blockedDomains = listOf(
@@ -1105,6 +1130,14 @@ class MainActivity : AppCompatActivity() {
                     clearCurrentSiteData()
                     true
                 }
+                R.id.menu_voice_search -> {
+                    startVoiceSearch()
+                    true
+                }
+                R.id.menu_screenshot -> {
+                    takeScreenshot()
+                    true
+                }
                 R.id.menu_desktop_site -> {
                     toggleDesktopMode()
                     true
@@ -1684,6 +1717,91 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    /**
+     * Start voice search using speech recognition
+     */
+    private fun startVoiceSearch() {
+        try {
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_WEB_SEARCH)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to search...")
+            }
+            voiceSearchLauncher.launch(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Voice search not available", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * Take a screenshot of the current page
+     */
+    private fun takeScreenshot() {
+        try {
+            // Create bitmap from WebView
+            val bitmap = Bitmap.createBitmap(
+                webView.width,
+                webView.measuredHeight.coerceAtMost(webView.height),
+                Bitmap.Config.ARGB_8888
+            )
+            val canvas = Canvas(bitmap)
+            webView.draw(canvas)
+
+            // Save to file
+            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val filename = "CleanFinding_$timestamp.png"
+
+            val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+            val cleanfindingDir = File(picturesDir, "CleanFinding")
+            if (!cleanfindingDir.exists()) {
+                cleanfindingDir.mkdirs()
+            }
+
+            val file = File(cleanfindingDir, filename)
+            FileOutputStream(file).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            }
+
+            Toast.makeText(this, "Screenshot saved: $filename", Toast.LENGTH_LONG).show()
+
+            // Offer to share
+            AlertDialog.Builder(this)
+                .setTitle("Screenshot Saved")
+                .setMessage("Would you like to share this screenshot?")
+                .setPositiveButton("Share") { _, _ ->
+                    shareScreenshot(file)
+                }
+                .setNegativeButton("Close", null)
+                .show()
+
+        } catch (e: Exception) {
+            android.util.Log.e("Screenshot", "Error taking screenshot: ${e.message}")
+            Toast.makeText(this, "Failed to take screenshot", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * Share a screenshot file
+     */
+    private fun shareScreenshot(file: File) {
+        try {
+            val uri = FileProvider.getUriForFile(
+                this,
+                "${packageName}.fileprovider",
+                file
+            )
+
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "image/png"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(shareIntent, "Share Screenshot"))
+        } catch (e: Exception) {
+            Toast.makeText(this, "Failed to share screenshot", Toast.LENGTH_SHORT).show()
+        }
     }
 
     // Desktop mode - Chrome-like implementation

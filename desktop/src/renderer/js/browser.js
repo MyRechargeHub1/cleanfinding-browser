@@ -681,6 +681,12 @@ function handleMenuAction(action) {
         case 'clear-site-data':
             clearCurrentSiteData();
             break;
+        case 'voice-search':
+            startVoiceSearch();
+            break;
+        case 'screenshot':
+            takeScreenshot();
+            break;
     }
 }
 
@@ -1120,6 +1126,122 @@ async function clearCurrentSiteData() {
             // Fallback
             tab.webview.reloadIgnoringCache();
             alert(`Cache cleared for ${domain}`);
+        }
+    }
+}
+
+/**
+ * Start voice search using Web Speech API
+ */
+let recognition = null;
+
+function startVoiceSearch() {
+    // Check if speech recognition is supported
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+        alert('Voice search is not supported in this browser.');
+        return;
+    }
+
+    if (recognition) {
+        recognition.stop();
+        recognition = null;
+        return;
+    }
+
+    recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = navigator.language || 'en-US';
+
+    // Show listening indicator
+    const originalPlaceholder = elements.addressBar.placeholder;
+    elements.addressBar.placeholder = '🎤 Listening...';
+    elements.addressBar.focus();
+
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        elements.addressBar.value = transcript;
+        elements.addressBar.placeholder = originalPlaceholder;
+        navigateToUrl(transcript);
+        recognition = null;
+    };
+
+    recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        elements.addressBar.placeholder = originalPlaceholder;
+        if (event.error !== 'aborted') {
+            alert('Voice search failed: ' + event.error);
+        }
+        recognition = null;
+    };
+
+    recognition.onend = () => {
+        elements.addressBar.placeholder = originalPlaceholder;
+    };
+
+    try {
+        recognition.start();
+    } catch (err) {
+        console.error('Failed to start speech recognition:', err);
+        elements.addressBar.placeholder = originalPlaceholder;
+        alert('Failed to start voice search.');
+        recognition = null;
+    }
+}
+
+/**
+ * Take a screenshot of the current page
+ */
+async function takeScreenshot() {
+    const tab = getActiveTab();
+    if (!tab || !tab.webview) return;
+
+    try {
+        // Use Electron's capturePage API via webview
+        const image = await tab.webview.capturePage();
+
+        if (image && !image.isEmpty()) {
+            // Convert to data URL and offer download
+            const dataUrl = image.toDataURL();
+
+            // Create download link
+            const link = document.createElement('a');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            link.download = `CleanFinding_${timestamp}.png`;
+            link.href = dataUrl;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            // Notify user
+            const originalPlaceholder = elements.addressBar.placeholder;
+            elements.addressBar.placeholder = 'Screenshot saved!';
+            setTimeout(() => {
+                elements.addressBar.placeholder = originalPlaceholder;
+            }, 2000);
+        } else {
+            alert('Failed to capture screenshot - page may be empty.');
+        }
+    } catch (err) {
+        console.error('Screenshot error:', err);
+        // Fallback: use html2canvas approach via injection
+        try {
+            const script = `
+                (function() {
+                    // Simple screenshot via canvas (visible area only)
+                    var canvas = document.createElement('canvas');
+                    canvas.width = window.innerWidth;
+                    canvas.height = window.innerHeight;
+                    // This is a simplified fallback - real implementation would need html2canvas
+                    return 'Screenshot not available in fallback mode';
+                })();
+            `;
+            await tab.webview.executeJavaScript(script);
+            alert('Screenshot feature requires Electron native API.');
+        } catch (e) {
+            alert('Failed to take screenshot.');
         }
     }
 }
