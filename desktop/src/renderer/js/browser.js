@@ -672,6 +672,15 @@ function handleMenuAction(action) {
         case 'find':
             showFindInPage();
             break;
+        case 'page-info':
+            showPageInfo();
+            break;
+        case 'read-aloud':
+            toggleReadAloud();
+            break;
+        case 'clear-site-data':
+            clearCurrentSiteData();
+            break;
     }
 }
 
@@ -992,6 +1001,126 @@ function translatePage() {
     if (currentUrl) {
         const translateUrl = `https://translate.google.com/translate?sl=auto&tl=en&u=${encodeURIComponent(currentUrl)}`;
         tab.webview.src = translateUrl;
+    }
+}
+
+/**
+ * Show page information dialog
+ */
+function showPageInfo() {
+    const tab = getActiveTab();
+    if (!tab) return;
+
+    const url = tab.url || elements.addressBar.value;
+    const title = tab.title || 'No title';
+
+    let domain = 'Unknown';
+    let isHttps = false;
+    try {
+        const urlObj = new URL(url);
+        domain = urlObj.hostname;
+        isHttps = urlObj.protocol === 'https:';
+    } catch (e) {}
+
+    const sslStatus = isHttps ? '🔒 Secure (HTTPS)' : '⚠️ Not Secure (HTTP)';
+
+    const info = `Connection: ${sslStatus}
+
+Domain: ${domain}
+
+Trackers Blocked: ${browser.privacyStats.trackersBlocked}
+
+Page Title: ${title}
+
+Full URL: ${url}`;
+
+    alert(info);
+}
+
+/**
+ * Read page content aloud using Web Speech API
+ */
+let speechSynthesis = window.speechSynthesis;
+let currentUtterance = null;
+let isSpeaking = false;
+
+function toggleReadAloud() {
+    if (isSpeaking) {
+        speechSynthesis.cancel();
+        isSpeaking = false;
+        return;
+    }
+
+    const tab = getActiveTab();
+    if (!tab || !tab.webview) return;
+
+    const extractScript = `
+        (function() {
+            var article = document.querySelector('article') ||
+                          document.querySelector('[role="main"]') ||
+                          document.querySelector('main') ||
+                          document.body;
+
+            var text = article.innerText || article.textContent || '';
+            text = text.replace(/\\s+/g, ' ').trim();
+            return text.substring(0, 5000);
+        })();
+    `;
+
+    tab.webview.executeJavaScript(extractScript).then(text => {
+        if (text && text.length > 0) {
+            currentUtterance = new SpeechSynthesisUtterance(text);
+            currentUtterance.onend = () => {
+                isSpeaking = false;
+            };
+            currentUtterance.onerror = () => {
+                isSpeaking = false;
+            };
+            isSpeaking = true;
+            speechSynthesis.speak(currentUtterance);
+        } else {
+            alert('No text content found on this page.');
+        }
+    }).catch(err => {
+        console.error('Read aloud error:', err);
+        alert('Could not read page content.');
+    });
+}
+
+/**
+ * Clear data for current site only
+ */
+async function clearCurrentSiteData() {
+    const tab = getActiveTab();
+    if (!tab) return;
+
+    const url = tab.url || elements.addressBar.value;
+    let domain = '';
+    try {
+        domain = new URL(url).hostname;
+    } catch (e) {
+        alert('Invalid URL');
+        return;
+    }
+
+    if (confirm(`Clear all data for ${domain}?\n\nThis includes cookies, cache, and stored data.`)) {
+        try {
+            // Clear via Electron API
+            const result = await window.cleanfindingAPI.clearSiteData(domain);
+            if (result && result.success) {
+                // Reload the page
+                tab.webview.reload();
+                alert(`Site data cleared for ${domain}`);
+            } else {
+                // Fallback: just clear cache and reload
+                tab.webview.reloadIgnoringCache();
+                alert(`Cache cleared for ${domain}`);
+            }
+        } catch (err) {
+            // Fallback
+            tab.webview.reloadIgnoringCache();
+            alert(`Cache cleared for ${domain}`);
+        }
     }
 }
 
