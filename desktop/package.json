@@ -50,14 +50,7 @@
       "main.js",
       "preload.js",
       "src/**/*",
-      "!src/**/*.{ts,map}",
-      "../shared/privacy-handlers/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "../shared/privacy-handlers",
-        "to": "privacy-handlers"
-      }
+      "!src/**/*.{ts,map}"
     ],
     "win": {
       "target": [
@@ -70,7 +63,6 @@
           "arch": ["x64"]
         }
       ],
-      "icon": "build/icons/icon.ico",
       "artifactName": "${productName}-Setup-${version}.${ext}"
     },
     "nsis": {
@@ -91,7 +83,6 @@
           "arch": ["x64", "arm64"]
         }
       ],
-      "icon": "build/icons/icon.icns",
       "category": "public.app-category.utilities",
       "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
@@ -124,7 +115,6 @@
           "arch": ["x64"]
         }
       ],
-      "icon": "build/icons/",
       "category": "Network",
       "artifactName": "${productName}-${version}-${arch}.${ext}"
     }
