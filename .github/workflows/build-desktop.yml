@@ -29,12 +29,13 @@ jobs:
         working-directory: ./desktop
 
       - name: Copy shared dependencies
+        shell: pwsh
         run: |
-          mkdir -p desktop/shared
-          cp -r shared/privacy-handlers desktop/shared/
+          New-Item -ItemType Directory -Force -Path "desktop/shared"
+          Copy-Item -Recurse -Force "shared/privacy-handlers" "desktop/shared/"
 
       - name: Build Windows
-        run: npm run build:win
+        run: npx electron-builder --win --publish never
         working-directory: ./desktop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -69,10 +70,8 @@ jobs:
           cp -r shared/privacy-handlers desktop/shared/
 
       - name: Build macOS
-        run: npm run build:mac
+        run: npx electron-builder --mac --publish never
         working-directory: ./desktop
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
@@ -105,10 +104,8 @@ jobs:
           cp -r shared/privacy-handlers desktop/shared/
 
       - name: Build Linux
-        run: npm run build:linux
+        run: npx electron-builder --linux --publish never
         working-directory: ./desktop
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
