@@ -221,7 +221,23 @@ function setupEventListeners() {
                     e.preventDefault();
                     setZoom(100);
                     break;
+                case 'f':
+                    e.preventDefault();
+                    showFindInPage();
+                    break;
+                case 'g':
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        findPrevious();
+                    } else {
+                        findNext();
+                    }
+                    break;
             }
+        }
+        // Escape to clear find
+        if (e.key === 'Escape' && findInPageActive) {
+            clearFind();
         }
     });
 }
@@ -650,6 +666,12 @@ function handleMenuAction(action) {
         case 'night-mode':
             toggleNightMode();
             break;
+        case 'translate':
+            translatePage();
+            break;
+        case 'find':
+            showFindInPage();
+            break;
     }
 }
 
@@ -957,6 +979,72 @@ async function toggleNightMode() {
     } catch (err) {
         console.error('Night mode error:', err);
     }
+}
+
+/**
+ * Translate the current page using Google Translate
+ */
+function translatePage() {
+    const tab = getActiveTab();
+    if (!tab) return;
+
+    const currentUrl = tab.url || elements.addressBar.value;
+    if (currentUrl) {
+        const translateUrl = `https://translate.google.com/translate?sl=auto&tl=en&u=${encodeURIComponent(currentUrl)}`;
+        tab.webview.src = translateUrl;
+    }
+}
+
+/**
+ * Find in page functionality
+ */
+let findInPageActive = false;
+let findInPageQuery = '';
+
+function showFindInPage() {
+    const query = prompt('Find in page:', findInPageQuery);
+    if (query !== null && query.trim() !== '') {
+        findInPageQuery = query.trim();
+        findInPageActive = true;
+        performFind(findInPageQuery);
+    } else if (query === '') {
+        clearFind();
+    }
+}
+
+function performFind(query) {
+    const tab = getActiveTab();
+    if (!tab || !tab.webview) return;
+
+    // Use Electron's findInPage API
+    tab.webview.findInPage(query);
+}
+
+function findNext() {
+    if (findInPageActive && findInPageQuery) {
+        const tab = getActiveTab();
+        if (tab && tab.webview) {
+            tab.webview.findInPage(findInPageQuery, { forward: true, findNext: true });
+        }
+    }
+}
+
+function findPrevious() {
+    if (findInPageActive && findInPageQuery) {
+        const tab = getActiveTab();
+        if (tab && tab.webview) {
+            tab.webview.findInPage(findInPageQuery, { forward: false, findNext: true });
+        }
+    }
+}
+
+function clearFind() {
+    const tab = getActiveTab();
+    if (tab && tab.webview) {
+        tab.webview.stopFindInPage('clearSelection');
+    }
+    findInPageActive = false;
+    findInPageQuery = '';
 }
 
 /**

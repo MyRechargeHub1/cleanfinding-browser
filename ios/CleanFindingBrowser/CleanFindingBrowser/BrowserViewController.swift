@@ -412,6 +412,14 @@ class BrowserViewController: UIViewController {
             self?.zoomOut()
         })
 
+        alert.addAction(UIAlertAction(title: "Translate Page", style: .default) { [weak self] _ in
+            self?.translatePage()
+        })
+
+        alert.addAction(UIAlertAction(title: "Find in Page", style: .default) { [weak self] _ in
+            self?.showFindInPage()
+        })
+
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
 
         present(alert, animated: true)
@@ -556,6 +564,44 @@ class BrowserViewController: UIViewController {
         document.body.style.webkitTextSizeAdjust = '\(Int(currentZoom * 100))%';
         """
         webView.evaluateJavaScript(zoomScript, completionHandler: nil)
+    }
+
+    private func translatePage() {
+        guard let currentURL = webView.url?.absoluteString,
+              let encodedURL = currentURL.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+            return
+        }
+
+        let translateURL = "https://translate.google.com/translate?sl=auto&tl=en&u=\(encodedURL)"
+        if let url = URL(string: translateURL) {
+            webView.load(URLRequest(url: url))
+        }
+    }
+
+    private func showFindInPage() {
+        let alert = UIAlertController(title: "Find in Page", message: nil, preferredStyle: .alert)
+        alert.addTextField { textField in
+            textField.placeholder = "Search text..."
+        }
+
+        alert.addAction(UIAlertAction(title: "Find", style: .default) { [weak self, weak alert] _ in
+            guard let query = alert?.textFields?.first?.text, !query.isEmpty else { return }
+            self?.performFind(query: query)
+        })
+
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        present(alert, animated: true)
+    }
+
+    private func performFind(query: String) {
+        let findScript = """
+        (function() {
+            if (window.find) {
+                window.find('\(query.replacingOccurrences(of: "'", with: "\\'"))');
+            }
+        })();
+        """
+        webView.evaluateJavaScript(findScript, completionHandler: nil)
     }
 
     // MARK: - KVO

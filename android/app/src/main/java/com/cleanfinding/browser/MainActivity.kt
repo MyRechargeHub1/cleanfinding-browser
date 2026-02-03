@@ -12,8 +12,10 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Rational
+import android.view.GestureDetector
 import android.view.KeyEvent
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.webkit.*
@@ -23,6 +25,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
 
@@ -91,6 +94,11 @@ class MainActivity : AppCompatActivity() {
 
     // Zoom level (percentage)
     private var currentZoom = 100
+
+    // Gesture detection for swipe navigation
+    private lateinit var gestureDetector: GestureDetector
+    private val SWIPE_THRESHOLD = 100
+    private val SWIPE_VELOCITY_THRESHOLD = 100
 
     // Tracker domains to block
     private val blockedDomains = listOf(
@@ -169,9 +177,48 @@ class MainActivity : AppCompatActivity() {
 
         initViews()
         setupListeners()
+        setupGestureDetector()
 
         // Create initial tab
         createNewTab(intent?.data?.toString() ?: homeUrl)
+    }
+
+    /**
+     * Setup gesture detector for swipe navigation (back/forward)
+     */
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupGestureDetector() {
+        gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onFling(
+                e1: MotionEvent?,
+                e2: MotionEvent,
+                velocityX: Float,
+                velocityY: Float
+            ): Boolean {
+                if (e1 == null) return false
+
+                val diffX = e2.x - e1.x
+                val diffY = e2.y - e1.y
+
+                // Only detect horizontal swipes (ignore vertical scrolling)
+                if (abs(diffX) > abs(diffY) && abs(diffX) > SWIPE_THRESHOLD && abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
+                    if (diffX > 0) {
+                        // Swipe right -> Go back
+                        if (webView.canGoBack()) {
+                            webView.goBack()
+                            return true
+                        }
+                    } else {
+                        // Swipe left -> Go forward
+                        if (webView.canGoForward()) {
+                            webView.goForward()
+                            return true
+                        }
+                    }
+                }
+                return false
+            }
+        })
     }
 
     private fun initViews() {
@@ -200,13 +247,19 @@ class MainActivity : AppCompatActivity() {
         appBarLayout = findViewById(R.id.appBarLayout)
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
+    @SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
     private fun setupWebView(wv: WebView, isIncognito: Boolean = false) {
         // CRITICAL FIX: Enable hardware acceleration for video playback
         wv.setLayerType(View.LAYER_TYPE_HARDWARE, null)
 
         // Enable nested scrolling for CoordinatorLayout/AppBarLayout integration
         wv.isNestedScrollingEnabled = true
+
+        // SWIPE NAVIGATION: Detect horizontal swipes for back/forward navigation
+        wv.setOnTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
+            false // Don't consume the event, let WebView handle it too
+        }
 
         // CHROME-LIKE: Add scroll listener to hide/show toolbar based on scroll direction
         wv.setOnScrollChangeListener { _, _, scrollY, _, oldScrollY ->
@@ -1036,6 +1089,10 @@ class MainActivity : AppCompatActivity() {
                     toggleNightMode()
                     true
                 }
+                R.id.menu_translate -> {
+                    translatePage()
+                    true
+                }
                 R.id.menu_desktop_site -> {
                     toggleDesktopMode()
                     true
@@ -1457,6 +1514,18 @@ class MainActivity : AppCompatActivity() {
                 Toast.LENGTH_SHORT
             ).show()
         }
+    }
+
+    /**
+     * Translate page using Google Translate
+     */
+    private fun translatePage() {
+        val currentUrl = webView.url ?: return
+
+        // Use Google Translate to translate the page
+        val translateUrl = "https://translate.google.com/translate?sl=auto&tl=en&u=${Uri.encode(currentUrl)}"
+        webView.loadUrl(translateUrl)
+        Toast.makeText(this, "Translating page...", Toast.LENGTH_SHORT).show()
     }
 
     // Desktop mode - Chrome-like implementation
