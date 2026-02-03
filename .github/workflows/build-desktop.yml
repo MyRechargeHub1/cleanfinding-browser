@@ -28,6 +28,11 @@ jobs:
         run: npm install
         working-directory: ./desktop
 
+      - name: Copy shared dependencies
+        run: |
+          mkdir -p desktop/shared
+          cp -r shared/privacy-handlers desktop/shared/
+
       - name: Build Windows
         run: npm run build:win
         working-directory: ./desktop
@@ -57,6 +62,11 @@ jobs:
       - name: Install dependencies
         run: npm install
         working-directory: ./desktop
+
+      - name: Copy shared dependencies
+        run: |
+          mkdir -p desktop/shared
+          cp -r shared/privacy-handlers desktop/shared/
 
       - name: Build macOS
         run: npm run build:mac
@@ -88,6 +98,11 @@ jobs:
       - name: Install dependencies
         run: npm install
         working-directory: ./desktop
+
+      - name: Copy shared dependencies
+        run: |
+          mkdir -p desktop/shared
+          cp -r shared/privacy-handlers desktop/shared/
 
       - name: Build Linux
         run: npm run build:linux

@@ -50,6 +50,7 @@
       "main.js",
       "preload.js",
       "src/**/*",
+      "shared/**/*",
       "!src/**/*.{ts,map}"
     ],
     "win": {
