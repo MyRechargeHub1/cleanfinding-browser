@@ -1,10 +1,17 @@
 package com.cleanfinding.browser
 
 import android.annotation.SuppressLint
+import android.app.PictureInPictureParams
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.util.Rational
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
@@ -74,6 +81,9 @@ class MainActivity : AppCompatActivity() {
     private var lastScrollY = 0
     private var isToolbarVisible = true
     private val SCROLL_THRESHOLD = 10  // Minimum scroll distance to trigger hide/show
+
+    // Picture-in-Picture support
+    private var isInPipMode = false
 
     // Tracker domains to block
     private val blockedDomains = listOf(
@@ -999,6 +1009,14 @@ class MainActivity : AppCompatActivity() {
                     shareCurrentPage()
                     true
                 }
+                R.id.menu_copy_url -> {
+                    copyUrlToClipboard()
+                    true
+                }
+                R.id.menu_pip -> {
+                    enterPipMode()
+                    true
+                }
                 R.id.menu_desktop_site -> {
                     toggleDesktopMode()
                     true
@@ -1199,6 +1217,68 @@ class MainActivity : AppCompatActivity() {
             customViewContainer.visibility = View.GONE
             findViewById<androidx.coordinatorlayout.widget.CoordinatorLayout>(R.id.mainContent)?.visibility = View.VISIBLE
         }
+    }
+
+    /**
+     * Enter Picture-in-Picture mode for video playback
+     * Allows users to watch videos in a floating window while using other apps
+     */
+    private fun enterPipMode() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                // Build PiP parameters with 16:9 aspect ratio (standard video)
+                val pipParams = PictureInPictureParams.Builder()
+                    .setAspectRatio(Rational(16, 9))
+                    .build()
+
+                enterPictureInPictureMode(pipParams)
+            } catch (e: Exception) {
+                android.util.Log.e("PiP", "Error entering PiP mode: ${e.message}")
+                Toast.makeText(this, "Picture-in-Picture not available", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(this, "Picture-in-Picture requires Android 8.0+", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * Handle PiP mode changes
+     */
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        isInPipMode = isInPictureInPictureMode
+
+        if (isInPictureInPictureMode) {
+            // Entered PiP mode - hide UI elements
+            appBarLayout.visibility = View.GONE
+        } else {
+            // Exited PiP mode - restore UI
+            appBarLayout.visibility = View.VISIBLE
+            showToolbar()
+        }
+    }
+
+    /**
+     * When user leaves the app during fullscreen video, enter PiP mode
+     */
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+
+        // If playing fullscreen video, enter PiP mode when user presses home
+        if (customView != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            enterPipMode()
+        }
+    }
+
+    /**
+     * Copy current URL to clipboard
+     */
+    private fun copyUrlToClipboard() {
+        val url = webView.url ?: return
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText("URL", url)
+        clipboard.setPrimaryClip(clip)
+        Toast.makeText(this, "URL copied to clipboard", Toast.LENGTH_SHORT).show()
     }
 
     // Desktop mode - Chrome-like implementation

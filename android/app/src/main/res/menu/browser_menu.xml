@@ -34,6 +34,12 @@
         android:id="@+id/menu_share"
         android:title="Share" />
     <item
+        android:id="@+id/menu_copy_url"
+        android:title="Copy URL" />
+    <item
+        android:id="@+id/menu_pip"
+        android:title="Picture-in-Picture" />
+    <item
         android:id="@+id/menu_desktop_site"
         android:title="Desktop site"
         android:checkable="true" />

@@ -1,6 +1,6 @@
 /**
  * CleanFinding Browser - Browser Logic
- * @version 1.5.0
+ * @version 1.6.0
  */
 
 // Browser state
@@ -607,6 +607,15 @@ function handleMenuAction(action) {
         case 'about':
             elements.aboutModal.style.display = 'flex';
             break;
+        case 'share':
+            shareCurrentPage();
+            break;
+        case 'copy-url':
+            copyUrlToClipboard();
+            break;
+        case 'pip':
+            enterPictureInPicture();
+            break;
     }
 }
 
@@ -657,6 +666,99 @@ async function loadDuckPlayerPage(videoId, originalUrl) {
     // Update tracker count
     browser.privacyStats.trackersBlocked++;
     elements.blockedCount.textContent = browser.privacyStats.trackersBlocked;
+}
+
+/**
+ * Enter Picture-in-Picture mode for the current video
+ * Allows watching videos in a floating window
+ */
+async function enterPictureInPicture() {
+    const tab = getActiveTab();
+    if (!tab || !tab.webview) return;
+
+    try {
+        // Inject script to find and enter PiP for any playing video
+        const script = `
+            (function() {
+                const videos = document.querySelectorAll('video');
+                for (const video of videos) {
+                    if (!video.paused || video.currentTime > 0) {
+                        if (document.pictureInPictureEnabled && !video.disablePictureInPicture) {
+                            video.requestPictureInPicture()
+                                .then(() => console.log('PiP: Entered Picture-in-Picture mode'))
+                                .catch(err => console.log('PiP: Failed - ' + err.message));
+                            return true;
+                        }
+                    }
+                }
+                // If no active video found, try the first video
+                if (videos.length > 0) {
+                    const video = videos[0];
+                    if (document.pictureInPictureEnabled && !video.disablePictureInPicture) {
+                        video.requestPictureInPicture()
+                            .then(() => console.log('PiP: Entered Picture-in-Picture mode'))
+                            .catch(err => console.log('PiP: Failed - ' + err.message));
+                        return true;
+                    }
+                }
+                return false;
+            })();
+        `;
+
+        const result = await tab.webview.executeJavaScript(script);
+        if (!result) {
+            alert('No video found on this page, or Picture-in-Picture is not supported.');
+        }
+    } catch (error) {
+        console.error('PiP error:', error);
+        alert('Picture-in-Picture is not available for this page.');
+    }
+}
+
+/**
+ * Copy current URL to clipboard
+ */
+function copyUrlToClipboard() {
+    const tab = getActiveTab();
+    if (!tab) return;
+
+    const url = tab.url || elements.addressBar.value;
+    if (url) {
+        navigator.clipboard.writeText(url).then(() => {
+            // Show a brief notification
+            const originalPlaceholder = elements.addressBar.placeholder;
+            elements.addressBar.placeholder = 'URL copied!';
+            setTimeout(() => {
+                elements.addressBar.placeholder = originalPlaceholder;
+            }, 1500);
+        }).catch(err => {
+            console.error('Failed to copy URL:', err);
+            alert('Failed to copy URL to clipboard');
+        });
+    }
+}
+
+/**
+ * Share current page
+ */
+function shareCurrentPage() {
+    const tab = getActiveTab();
+    if (!tab) return;
+
+    const url = tab.url || elements.addressBar.value;
+    const title = tab.title || 'Check this out';
+
+    if (navigator.share) {
+        navigator.share({
+            title: title,
+            url: url
+        }).catch(err => {
+            console.log('Share cancelled or failed:', err);
+        });
+    } else {
+        // Fallback: copy to clipboard
+        copyUrlToClipboard();
+    }
 }
 
 /**
