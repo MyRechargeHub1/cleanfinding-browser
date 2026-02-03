@@ -1,7 +1,7 @@
 {
   "name": "cleanfinding-browser-desktop",
   "productName": "CleanFinding Browser",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Privacy-focused, family-safe browser for Windows, macOS, and Linux",
   "main": "main.js",
   "scripts": {
@@ -70,7 +70,6 @@
           "arch": ["x64"]
         }
       ],
-      "icon": "build/icons/icon.ico",
       "artifactName": "${productName}-Setup-${version}.${ext}"
     },
     "nsis": {
@@ -91,7 +90,6 @@
           "arch": ["x64", "arm64"]
         }
       ],
-      "icon": "build/icons/icon.icns",
       "category": "public.app-category.utilities",
       "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
@@ -124,7 +122,6 @@
           "arch": ["x64"]
         }
       ],
-      "icon": "build/icons/",
       "category": "Network",
       "artifactName": "${productName}-${version}-${arch}.${ext}"
     }
