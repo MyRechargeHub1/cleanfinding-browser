@@ -9,7 +9,8 @@
 const { app, BrowserWindow, ipcMain, session, Menu } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
-const DuckPlayerHandler = require('../shared/privacy-handlers/DuckPlayerHandler');
+// Use local path for packaged builds (shared folder is copied during build)
+const DuckPlayerHandler = require('./shared/privacy-handlers/DuckPlayerHandler');
 
 // Initialize electron-store for settings persistence
 const store = new Store({
