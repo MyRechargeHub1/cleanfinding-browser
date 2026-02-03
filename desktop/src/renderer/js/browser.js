@@ -1,6 +1,6 @@
 /**
  * CleanFinding Browser - Browser Logic
- * @version 1.6.0
+ * @version 1.7.0
  */
 
 // Browser state
@@ -15,7 +15,13 @@ const browser = {
     // Scrolling toolbar state
     isToolbarVisible: true,
     lastScrollY: 0,
-    SCROLL_THRESHOLD: 30
+    SCROLL_THRESHOLD: 30,
+    // Reader mode state
+    isReaderMode: false,
+    // Zoom level (percentage)
+    currentZoom: 100,
+    // Night mode state
+    isNightMode: false
 };
 
 // Trusted domains - never block these (same as Android)
@@ -201,6 +207,19 @@ function setupEventListeners() {
                 case 'l':
                     e.preventDefault();
                     elements.addressBar.focus();
+                    break;
+                case '+':
+                case '=':
+                    e.preventDefault();
+                    zoomIn();
+                    break;
+                case '-':
+                    e.preventDefault();
+                    zoomOut();
+                    break;
+                case '0':
+                    e.preventDefault();
+                    setZoom(100);
                     break;
             }
         }
@@ -616,6 +635,21 @@ function handleMenuAction(action) {
         case 'pip':
             enterPictureInPicture();
             break;
+        case 'reader-mode':
+            toggleReaderMode();
+            break;
+        case 'zoom-in':
+            zoomIn();
+            break;
+        case 'zoom-out':
+            zoomOut();
+            break;
+        case 'zoom-reset':
+            setZoom(100);
+            break;
+        case 'night-mode':
+            toggleNightMode();
+            break;
     }
 }
 
@@ -758,6 +792,170 @@ function shareCurrentPage() {
     } else {
         // Fallback: copy to clipboard
         copyUrlToClipboard();
+    }
+}
+
+/**
+ * Toggle Reader Mode - extracts article content for clean reading
+ */
+async function toggleReaderMode() {
+    const tab = getActiveTab();
+    if (!tab || !tab.webview) return;
+
+    browser.isReaderMode = !browser.isReaderMode;
+
+    if (browser.isReaderMode) {
+        const readerScript = `
+            (function() {
+                var article = document.querySelector('article') ||
+                              document.querySelector('[role="main"]') ||
+                              document.querySelector('main') ||
+                              document.querySelector('.post-content') ||
+                              document.querySelector('.article-content') ||
+                              document.querySelector('.entry-content');
+
+                var title = document.querySelector('h1')?.textContent || document.title;
+                var content = '';
+
+                if (article) {
+                    content = article.innerHTML;
+                } else {
+                    var paragraphs = document.querySelectorAll('p');
+                    paragraphs.forEach(function(p) {
+                        if (p.textContent.length > 50) {
+                            content += '<p>' + p.textContent + '</p>';
+                        }
+                    });
+                }
+
+                if (content.length < 100) {
+                    return { success: false };
+                }
+
+                var readerHtml = '<!DOCTYPE html><html><head>' +
+                    '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+                    '<style>' +
+                    'body { font-family: Georgia, serif; max-width: 680px; margin: 0 auto; padding: 20px; ' +
+                    'line-height: 1.8; font-size: 18px; color: #333; background: #fafafa; }' +
+                    'h1 { font-size: 28px; line-height: 1.3; margin-bottom: 20px; }' +
+                    'img { max-width: 100%; height: auto; }' +
+                    'a { color: #0066cc; }' +
+                    '@media (prefers-color-scheme: dark) {' +
+                    'body { background: #1a1a1a; color: #e0e0e0; }' +
+                    'a { color: #6699ff; }' +
+                    '}' +
+                    '</style></head><body>' +
+                    '<h1>' + title + '</h1>' +
+                    content +
+                    '</body></html>';
+
+                document.open();
+                document.write(readerHtml);
+                document.close();
+                return { success: true };
+            })();
+        `;
+
+        try {
+            const result = await tab.webview.executeJavaScript(readerScript);
+            if (!result.success) {
+                alert('Could not extract article content from this page.');
+                browser.isReaderMode = false;
+            }
+        } catch (err) {
+            console.error('Reader mode error:', err);
+            browser.isReaderMode = false;
+        }
+    } else {
+        // Exit reader mode - reload the page
+        tab.webview.reload();
+    }
+}
+
+/**
+ * Show zoom controls dialog
+ */
+function showZoomDialog() {
+    const zoomLevels = [50, 75, 100, 125, 150, 175, 200];
+    const currentIndex = zoomLevels.indexOf(browser.currentZoom);
+
+    const newZoom = prompt(`Current zoom: ${browser.currentZoom}%\nEnter new zoom level (50-200):`, browser.currentZoom);
+    if (newZoom !== null) {
+        const zoom = parseInt(newZoom, 10);
+        if (zoom >= 50 && zoom <= 200) {
+            setZoom(zoom);
+        } else {
+            alert('Please enter a value between 50 and 200');
+        }
+    }
+}
+
+/**
+ * Set zoom level
+ */
+function setZoom(level) {
+    const tab = getActiveTab();
+    if (!tab || !tab.webview) return;
+
+    browser.currentZoom = level;
+    tab.webview.setZoomFactor(level / 100);
+}
+
+/**
+ * Zoom in by 25%
+ */
+function zoomIn() {
+    if (browser.currentZoom < 200) {
+        setZoom(browser.currentZoom + 25);
+    }
+}
+
+/**
+ * Zoom out by 25%
+ */
+function zoomOut() {
+    if (browser.currentZoom > 50) {
+        setZoom(browser.currentZoom - 25);
+    }
+}
+
+/**
+ * Toggle night mode / blue light filter
+ */
+async function toggleNightMode() {
+    const tab = getActiveTab();
+    if (!tab || !tab.webview) return;
+
+    browser.isNightMode = !browser.isNightMode;
+
+    const nightModeScript = `
+        (function() {
+            var existingFilter = document.getElementById('cleanfinding-night-mode');
+            if (existingFilter) {
+                existingFilter.remove();
+                return 'disabled';
+            }
+
+            var style = document.createElement('style');
+            style.id = 'cleanfinding-night-mode';
+            style.textContent = \`
+                html {
+                    filter: sepia(30%) brightness(90%) !important;
+                    background-color: #1a1a1a !important;
+                }
+                body {
+                    background-color: #1a1a1a !important;
+                }
+            \`;
+            document.head.appendChild(style);
+            return 'enabled';
+        })();
+    `;
+
+    try {
+        await tab.webview.executeJavaScript(nightModeScript);
+    } catch (err) {
+        console.error('Night mode error:', err);
     }
 }
 

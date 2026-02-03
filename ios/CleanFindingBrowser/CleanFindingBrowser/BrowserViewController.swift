@@ -49,6 +49,15 @@ class BrowserViewController: UIViewController {
     private var toolbarBottomConstraint: NSLayoutConstraint?
     private var urlBarView: UIView?
 
+    // Reader mode state
+    private var isReaderMode = false
+
+    // Zoom level
+    private var currentZoom: CGFloat = 1.0
+
+    // Night mode state
+    private var isNightMode = false
+
     // MARK: - Lifecycle
 
     override func viewDidLoad() {
@@ -374,6 +383,179 @@ class BrowserViewController: UIViewController {
 
     @objc private func goHome() {
         loadHomePage()
+    }
+
+    @objc private func showMenu() {
+        let alert = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+
+        alert.addAction(UIAlertAction(title: "Share", style: .default) { [weak self] _ in
+            self?.shareCurrentPage()
+        })
+
+        alert.addAction(UIAlertAction(title: "Copy URL", style: .default) { [weak self] _ in
+            self?.copyURLToClipboard()
+        })
+
+        alert.addAction(UIAlertAction(title: "Reader Mode", style: .default) { [weak self] _ in
+            self?.toggleReaderMode()
+        })
+
+        alert.addAction(UIAlertAction(title: "Night Mode", style: .default) { [weak self] _ in
+            self?.toggleNightMode()
+        })
+
+        alert.addAction(UIAlertAction(title: "Zoom In", style: .default) { [weak self] _ in
+            self?.zoomIn()
+        })
+
+        alert.addAction(UIAlertAction(title: "Zoom Out", style: .default) { [weak self] _ in
+            self?.zoomOut()
+        })
+
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+
+        present(alert, animated: true)
+    }
+
+    // MARK: - Feature Actions
+
+    private func shareCurrentPage() {
+        guard let url = webView.url else { return }
+
+        let activityVC = UIActivityViewController(
+            activityItems: [url],
+            applicationActivities: nil
+        )
+        present(activityVC, animated: true)
+    }
+
+    private func copyURLToClipboard() {
+        guard let url = webView.url?.absoluteString else { return }
+        UIPasteboard.general.string = url
+
+        // Show brief feedback
+        let alert = UIAlertController(title: nil, message: "URL copied to clipboard", preferredStyle: .alert)
+        present(alert, animated: true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            alert.dismiss(animated: true)
+        }
+    }
+
+    private func toggleReaderMode() {
+        isReaderMode.toggle()
+
+        if isReaderMode {
+            let readerScript = """
+            (function() {
+                var article = document.querySelector('article') ||
+                              document.querySelector('[role="main"]') ||
+                              document.querySelector('main') ||
+                              document.querySelector('.post-content') ||
+                              document.querySelector('.entry-content');
+
+                var title = document.querySelector('h1')?.textContent || document.title;
+                var content = '';
+
+                if (article) {
+                    content = article.innerHTML;
+                } else {
+                    var paragraphs = document.querySelectorAll('p');
+                    paragraphs.forEach(function(p) {
+                        if (p.textContent.length > 50) {
+                            content += '<p>' + p.textContent + '</p>';
+                        }
+                    });
+                }
+
+                if (content.length < 100) {
+                    return false;
+                }
+
+                var readerHtml = '<!DOCTYPE html><html><head>' +
+                    '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+                    '<style>' +
+                    'body { font-family: Georgia, serif; max-width: 680px; margin: 0 auto; padding: 20px; ' +
+                    'line-height: 1.8; font-size: 18px; color: #333; background: #fafafa; }' +
+                    'h1 { font-size: 28px; line-height: 1.3; margin-bottom: 20px; }' +
+                    'img { max-width: 100%; height: auto; }' +
+                    '@media (prefers-color-scheme: dark) {' +
+                    'body { background: #1a1a1a; color: #e0e0e0; }' +
+                    '}' +
+                    '</style></head><body>' +
+                    '<h1>' + title + '</h1>' +
+                    content +
+                    '</body></html>';
+
+                document.open();
+                document.write(readerHtml);
+                document.close();
+                return true;
+            })();
+            """
+
+            webView.evaluateJavaScript(readerScript) { [weak self] result, error in
+                if let success = result as? Bool, !success {
+                    self?.isReaderMode = false
+                    let alert = UIAlertController(title: nil, message: "Could not extract article content", preferredStyle: .alert)
+                    alert.addAction(UIAlertAction(title: "OK", style: .default))
+                    self?.present(alert, animated: true)
+                }
+            }
+        } else {
+            webView.reload()
+        }
+    }
+
+    private func toggleNightMode() {
+        isNightMode.toggle()
+
+        let nightModeScript = """
+        (function() {
+            var existingFilter = document.getElementById('cleanfinding-night-mode');
+            if (existingFilter) {
+                existingFilter.remove();
+                return 'disabled';
+            }
+
+            var style = document.createElement('style');
+            style.id = 'cleanfinding-night-mode';
+            style.textContent = `
+                html {
+                    filter: sepia(30%) brightness(90%) !important;
+                    background-color: #1a1a1a !important;
+                }
+                body {
+                    background-color: #1a1a1a !important;
+                }
+            `;
+            document.head.appendChild(style);
+            return 'enabled';
+        })();
+        """
+
+        webView.evaluateJavaScript(nightModeScript, completionHandler: nil)
+    }
+
+    private func zoomIn() {
+        if currentZoom < 2.0 {
+            currentZoom += 0.25
+            applyZoom()
+        }
+    }
+
+    private func zoomOut() {
+        if currentZoom > 0.5 {
+            currentZoom -= 0.25
+            applyZoom()
+        }
+    }
+
+    private func applyZoom() {
+        let zoomScript = """
+        document.body.style.zoom = '\(currentZoom)';
+        document.body.style.webkitTextSizeAdjust = '\(Int(currentZoom * 100))%';
+        """
+        webView.evaluateJavaScript(zoomScript, completionHandler: nil)
     }
 
     // MARK: - KVO

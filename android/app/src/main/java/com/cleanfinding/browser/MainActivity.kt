@@ -85,6 +85,13 @@ class MainActivity : AppCompatActivity() {
     // Picture-in-Picture support
     private var isInPipMode = false
 
+    // Reader mode support
+    private var isReaderMode = false
+    private var originalHtml: String? = null
+
+    // Zoom level (percentage)
+    private var currentZoom = 100
+
     // Tracker domains to block
     private val blockedDomains = listOf(
         "google-analytics.com", "googletagmanager.com", "doubleclick.net",
@@ -1017,6 +1024,18 @@ class MainActivity : AppCompatActivity() {
                     enterPipMode()
                     true
                 }
+                R.id.menu_reader_mode -> {
+                    toggleReaderMode()
+                    true
+                }
+                R.id.menu_zoom -> {
+                    showZoomControls()
+                    true
+                }
+                R.id.menu_night_mode -> {
+                    toggleNightMode()
+                    true
+                }
                 R.id.menu_desktop_site -> {
                     toggleDesktopMode()
                     true
@@ -1279,6 +1298,165 @@ class MainActivity : AppCompatActivity() {
         val clip = ClipData.newPlainText("URL", url)
         clipboard.setPrimaryClip(clip)
         Toast.makeText(this, "URL copied to clipboard", Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * Toggle Reader Mode - extracts and displays article content in a clean format
+     */
+    private fun toggleReaderMode() {
+        if (isReaderMode) {
+            // Exit reader mode - reload the page
+            isReaderMode = false
+            webView.reload()
+            Toast.makeText(this, "Reader mode disabled", Toast.LENGTH_SHORT).show()
+        } else {
+            // Enter reader mode - extract article content
+            isReaderMode = true
+            injectReaderModeScript()
+            Toast.makeText(this, "Reader mode enabled", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * Inject JavaScript to extract and display article content in reader mode
+     */
+    private fun injectReaderModeScript() {
+        val readerScript = """
+            (function() {
+                // Simple article extraction
+                var article = document.querySelector('article') ||
+                              document.querySelector('[role="main"]') ||
+                              document.querySelector('main') ||
+                              document.querySelector('.post-content') ||
+                              document.querySelector('.article-content') ||
+                              document.querySelector('.entry-content');
+
+                var title = document.querySelector('h1')?.textContent || document.title;
+                var content = '';
+
+                if (article) {
+                    content = article.innerHTML;
+                } else {
+                    // Fallback: get all paragraphs
+                    var paragraphs = document.querySelectorAll('p');
+                    paragraphs.forEach(function(p) {
+                        if (p.textContent.length > 50) {
+                            content += '<p>' + p.textContent + '</p>';
+                        }
+                    });
+                }
+
+                if (content.length < 100) {
+                    alert('Could not extract article content from this page.');
+                    return;
+                }
+
+                // Create reader mode HTML
+                var readerHtml = '<!DOCTYPE html><html><head>' +
+                    '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+                    '<style>' +
+                    'body { font-family: Georgia, serif; max-width: 680px; margin: 0 auto; padding: 20px; ' +
+                    'line-height: 1.8; font-size: 18px; color: #333; background: #fafafa; }' +
+                    'h1 { font-size: 28px; line-height: 1.3; margin-bottom: 20px; }' +
+                    'img { max-width: 100%; height: auto; }' +
+                    'a { color: #0066cc; }' +
+                    '@media (prefers-color-scheme: dark) {' +
+                    'body { background: #1a1a1a; color: #e0e0e0; }' +
+                    'a { color: #6699ff; }' +
+                    '}' +
+                    '</style></head><body>' +
+                    '<h1>' + title + '</h1>' +
+                    content +
+                    '</body></html>';
+
+                document.open();
+                document.write(readerHtml);
+                document.close();
+            })();
+        """.trimIndent()
+
+        webView.evaluateJavascript(readerScript, null)
+    }
+
+    /**
+     * Show zoom controls dialog
+     */
+    private fun showZoomControls() {
+        val zoomLevels = arrayOf("50%", "75%", "100%", "125%", "150%", "175%", "200%")
+        val zoomValues = intArrayOf(50, 75, 100, 125, 150, 175, 200)
+
+        val currentIndex = zoomValues.indexOf(currentZoom).takeIf { it >= 0 } ?: 2
+
+        AlertDialog.Builder(this)
+            .setTitle("Zoom Level: $currentZoom%")
+            .setSingleChoiceItems(zoomLevels, currentIndex) { dialog, which ->
+                currentZoom = zoomValues[which]
+                webView.settings.textZoom = currentZoom
+                Toast.makeText(this, "Zoom: $currentZoom%", Toast.LENGTH_SHORT).show()
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    /**
+     * Zoom in by 25%
+     */
+    private fun zoomIn() {
+        if (currentZoom < 200) {
+            currentZoom += 25
+            webView.settings.textZoom = currentZoom
+            Toast.makeText(this, "Zoom: $currentZoom%", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * Zoom out by 25%
+     */
+    private fun zoomOut() {
+        if (currentZoom > 50) {
+            currentZoom -= 25
+            webView.settings.textZoom = currentZoom
+            Toast.makeText(this, "Zoom: $currentZoom%", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * Toggle night mode / blue light filter
+     */
+    private fun toggleNightMode() {
+        val nightModeScript = """
+            (function() {
+                var existingFilter = document.getElementById('cleanfinding-night-mode');
+                if (existingFilter) {
+                    existingFilter.remove();
+                    return 'disabled';
+                }
+
+                var style = document.createElement('style');
+                style.id = 'cleanfinding-night-mode';
+                style.textContent = `
+                    html {
+                        filter: sepia(30%) brightness(90%) !important;
+                        background-color: #1a1a1a !important;
+                    }
+                    body {
+                        background-color: #1a1a1a !important;
+                    }
+                `;
+                document.head.appendChild(style);
+                return 'enabled';
+            })();
+        """.trimIndent()
+
+        webView.evaluateJavascript(nightModeScript) { result ->
+            val status = result.replace("\"", "")
+            Toast.makeText(
+                this,
+                if (status == "enabled") "Night mode enabled" else "Night mode disabled",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
     }
 
     // Desktop mode - Chrome-like implementation
