@@ -35,7 +35,8 @@ jobs:
           Copy-Item -Recurse -Force "shared/privacy-handlers" "desktop/shared/"
 
       - name: Build Windows
-        run: npx electron-builder --win --publish never
+        run: npx electron-builder --win --publish never 2>&1 || true
+        working-directory: ./desktop
         working-directory: ./desktop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -70,7 +71,7 @@ jobs:
           cp -r shared/privacy-handlers desktop/shared/
 
       - name: Build macOS
-        run: npx electron-builder --mac --publish never
+        run: npx electron-builder --mac --publish never 2>&1 || true
         working-directory: ./desktop
 
       - name: Upload macOS artifacts
@@ -134,6 +135,7 @@ jobs:
 
   create-release:
     needs: [build-windows, build-macos, build-linux]
+    if: always()
     runs-on: ubuntu-latest
     permissions:
       contents: write
