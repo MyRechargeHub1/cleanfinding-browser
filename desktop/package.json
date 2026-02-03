@@ -79,26 +79,12 @@
       "icon": "build/icons/icon.png",
       "target": [
         {
-          "target": "dmg",
+          "target": "zip",
           "arch": ["x64"]
         }
       ],
       "category": "public.app-category.utilities",
       "artifactName": "${productName}-${version}-${arch}.${ext}"
-    },
-    "dmg": {
-      "contents": [
-        {
-          "x": 130,
-          "y": 220
-        },
-        {
-          "x": 410,
-          "y": 220,
-          "type": "link",
-          "path": "/Applications"
-        }
-      ]
     },
     "linux": {
       "icon": "build/icons/icon.png",
