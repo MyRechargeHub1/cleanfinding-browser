@@ -2,7 +2,7 @@
  * CleanFinding Browser - Electron Main Process
  * Privacy-focused, family-safe browser for Windows, macOS, and Linux
  *
- * @version 1.4.0
+ * @version 1.5.0
  * @author CleanFinding Browser Team
  */
 
@@ -85,7 +85,7 @@ function createWindow() {
             enableRemoteModule: false,
             webviewTag: true  // CRITICAL: Enable webview tag for browser tabs
         },
-        // icon: path.join(__dirname, 'build/icons/icon.png'),  // Icon added during build
+        icon: path.join(__dirname, 'build', 'icons', 'icon.png'),
         title: 'CleanFinding Browser',
         backgroundColor: '#ffffff'
     });
@@ -244,58 +244,36 @@ function setupPrivacyFeatures() {
     // Enable Do Not Track
     ses.setUserAgent(ses.getUserAgent() + ' DNT/1');
 
-    // Setup request filtering for tracker blocking
+    // Single onBeforeRequest handler for both tracker blocking and Duck Player
+    // Note: Electron only allows one handler per event - registering a second replaces the first
     ses.webRequest.onBeforeRequest({ urls: ['*://*/*'] }, (details, callback) => {
         const url = details.url.toLowerCase();
 
-        // Check if tracker blocking is enabled
-        if (!store.get('privacy.trackerBlocking')) {
-            callback({});
-            return;
-        }
-
-        // Block known tracker domains
-        const isTracker = TRACKER_DOMAINS.some(domain => url.includes(domain));
-
-        if (isTracker) {
-            console.log('CleanFinding: Blocked tracker:', details.url);
-            callback({ cancel: true });
-        } else {
-            callback({});
-        }
-    });
-
-    // Setup Duck Player (YouTube privacy protection)
-    ses.webRequest.onBeforeRequest(
-        { urls: ['*://youtube.com/watch*', '*://www.youtube.com/watch*', '*://m.youtube.com/watch*', '*://youtu.be/*'] },
-        (details, callback) => {
-            // Check if Duck Player is enabled
-            if (!store.get('privacy.duckPlayer')) {
-                callback({});
+        // Duck Player: redirect YouTube to privacy-friendly nocookie embed
+        if (store.get('privacy.duckPlayer') &&
+            details.resourceType === 'mainFrame' &&
+            duckPlayerHandler.isYouTubeUrl(details.url)) {
+            const videoId = duckPlayerHandler.extractVideoId(details.url);
+            if (videoId) {
+                console.log('CleanFinding: Duck Player redirect:', details.url);
+                mainWindow?.webContents.send('load-duck-player', videoId, details.url);
+                callback({ cancel: true });
                 return;
             }
-
-            // Only redirect main frame requests (not iframes, images, etc.)
-            if (details.resourceType === 'mainFrame' && duckPlayerHandler.isYouTubeUrl(details.url)) {
-                const privacyUrl = duckPlayerHandler.convertToPrivacyUrl(details.url);
-
-                if (privacyUrl) {
-                    console.log('CleanFinding: Duck Player redirect:', details.url, '->', privacyUrl);
-
-                    // Load Duck Player page instead
-                    const videoId = duckPlayerHandler.extractVideoId(details.url);
-                    if (videoId) {
-                        // Signal to renderer to show Duck Player page
-                        mainWindow.webContents.send('load-duck-player', videoId, details.url);
-                        callback({ cancel: true });
-                        return;
-                    }
-                }
-            }
-
-            callback({});
         }
-    );
+
+        // Tracker blocking
+        if (store.get('privacy.trackerBlocking')) {
+            const isTracker = TRACKER_DOMAINS.some(domain => url.includes(domain));
+            if (isTracker) {
+                console.log('CleanFinding: Blocked tracker:', details.url);
+                callback({ cancel: true });
+                return;
+            }
+        }
+
+        callback({});
+    });
 
     // Inject Duck Player enhancements into YouTube pages
     ses.webRequest.onCompleted(
@@ -429,6 +407,26 @@ ipcMain.handle('convert-to-privacy-url', (event, url) => {
  */
 ipcMain.handle('get-duck-player-page', (event, videoId, timestamp) => {
     return duckPlayerHandler.createDuckPlayerPage(videoId, timestamp);
+});
+
+/**
+ * Validate URL scheme (security)
+ */
+/**
+ * Clear data for a specific site/domain
+ */
+ipcMain.handle('clear-site-data', async (event, domain) => {
+    const ses = session.defaultSession;
+    try {
+        await ses.clearStorageData({
+            origin: `https://${domain}`,
+            storages: ['cookies', 'localstorage', 'indexdb', 'websql', 'caches']
+        });
+        return { success: true };
+    } catch (error) {
+        console.error('Failed to clear site data:', error);
+        return { success: false, error: error.message };
+    }
 });
 
 /**
