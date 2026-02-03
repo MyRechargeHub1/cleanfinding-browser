@@ -1,7 +1,19 @@
 import UIKit
 import WebKit
+import AVFoundation
+import Speech
 
 class BrowserViewController: UIViewController {
+
+    // Text-to-Speech
+    private let speechSynthesizer = AVSpeechSynthesizer()
+    private var isSpeaking = false
+
+    // Voice Search
+    private let speechRecognizer = SFSpeechRecognizer(locale: Locale.current)
+    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
+    private var recognitionTask: SFSpeechRecognitionTask?
+    private let audioEngine = AVAudioEngine()
 
     // MARK: - Properties
 
@@ -420,6 +432,26 @@ class BrowserViewController: UIViewController {
             self?.showFindInPage()
         })
 
+        alert.addAction(UIAlertAction(title: "Page Info", style: .default) { [weak self] _ in
+            self?.showPageInfo()
+        })
+
+        alert.addAction(UIAlertAction(title: "Read Aloud", style: .default) { [weak self] _ in
+            self?.toggleReadAloud()
+        })
+
+        alert.addAction(UIAlertAction(title: "Clear Site Data", style: .destructive) { [weak self] _ in
+            self?.clearCurrentSiteData()
+        })
+
+        alert.addAction(UIAlertAction(title: "Voice Search", style: .default) { [weak self] _ in
+            self?.startVoiceSearch()
+        })
+
+        alert.addAction(UIAlertAction(title: "Screenshot", style: .default) { [weak self] _ in
+            self?.takeScreenshot()
+        })
+
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
 
         present(alert, animated: true)
@@ -602,6 +634,214 @@ class BrowserViewController: UIViewController {
         })();
         """
         webView.evaluateJavaScript(findScript, completionHandler: nil)
+    }
+
+    private func showPageInfo() {
+        guard let url = webView.url else { return }
+
+        let title = webView.title ?? "No title"
+        let domain = url.host ?? "Unknown"
+        let isHttps = url.scheme == "https"
+        let sslStatus = isHttps ? "🔒 Secure (HTTPS)" : "⚠️ Not Secure (HTTP)"
+
+        let message = """
+        Connection: \(sslStatus)
+
+        Domain: \(domain)
+
+        Page Title: \(title)
+
+        Full URL: \(url.absoluteString)
+        """
+
+        let alert = UIAlertController(title: "Page Information", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        alert.addAction(UIAlertAction(title: "Copy URL", style: .default) { [weak self] _ in
+            self?.copyURLToClipboard()
+        })
+        present(alert, animated: true)
+    }
+
+    private func toggleReadAloud() {
+        if isSpeaking {
+            speechSynthesizer.stopSpeaking(at: .immediate)
+            isSpeaking = false
+            return
+        }
+
+        let extractScript = """
+        (function() {
+            var article = document.querySelector('article') ||
+                          document.querySelector('[role="main"]') ||
+                          document.querySelector('main') ||
+                          document.body;
+
+            var text = article.innerText || article.textContent || '';
+            text = text.replace(/\\s+/g, ' ').trim();
+            return text.substring(0, 5000);
+        })();
+        """
+
+        webView.evaluateJavaScript(extractScript) { [weak self] result, error in
+            guard let self = self,
+                  let text = result as? String,
+                  !text.isEmpty else {
+                let alert = UIAlertController(title: nil, message: "No text content found", preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: "OK", style: .default))
+                self?.present(alert, animated: true)
+                return
+            }
+
+            let utterance = AVSpeechUtterance(string: text)
+            utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+            utterance.voice = AVSpeechSynthesisVoice(language: Locale.current.languageCode ?? "en-US")
+
+            self.isSpeaking = true
+            self.speechSynthesizer.speak(utterance)
+        }
+    }
+
+    private func clearCurrentSiteData() {
+        guard let url = webView.url, let domain = url.host else { return }
+
+        let alert = UIAlertController(
+            title: "Clear Site Data",
+            message: "Clear all data for \(domain)?\n\nThis includes cookies, cache, and stored data.",
+            preferredStyle: .alert
+        )
+
+        alert.addAction(UIAlertAction(title: "Clear", style: .destructive) { [weak self] _ in
+            // Clear website data for this domain
+            let dataStore = WKWebsiteDataStore.default()
+            let dataTypes = WKWebsiteDataStore.allWebsiteDataTypes()
+
+            dataStore.fetchDataRecords(ofTypes: dataTypes) { records in
+                let domainRecords = records.filter { record in
+                    record.displayName.contains(domain)
+                }
+
+                dataStore.removeData(ofTypes: dataTypes, for: domainRecords) {
+                    DispatchQueue.main.async {
+                        self?.webView.reload()
+
+                        let confirmAlert = UIAlertController(title: nil, message: "Site data cleared for \(domain)", preferredStyle: .alert)
+                        confirmAlert.addAction(UIAlertAction(title: "OK", style: .default))
+                        self?.present(confirmAlert, animated: true)
+                    }
+                }
+            }
+        })
+
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        present(alert, animated: true)
+    }
+
+    private func startVoiceSearch() {
+        // Request speech recognition authorization
+        SFSpeechRecognizer.requestAuthorization { [weak self] status in
+            DispatchQueue.main.async {
+                switch status {
+                case .authorized:
+                    self?.beginVoiceRecognition()
+                case .denied, .restricted, .notDetermined:
+                    let alert = UIAlertController(
+                        title: "Voice Search Unavailable",
+                        message: "Please enable speech recognition in Settings.",
+                        preferredStyle: .alert
+                    )
+                    alert.addAction(UIAlertAction(title: "OK", style: .default))
+                    self?.present(alert, animated: true)
+                @unknown default:
+                    break
+                }
+            }
+        }
+    }
+
+    private func beginVoiceRecognition() {
+        guard let recognizer = speechRecognizer, recognizer.isAvailable else {
+            let alert = UIAlertController(title: nil, message: "Speech recognition not available", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+            return
+        }
+
+        // Show listening indicator
+        let listeningAlert = UIAlertController(title: "🎤 Listening...", message: "Speak now", preferredStyle: .alert)
+        listeningAlert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { [weak self] _ in
+            self?.stopVoiceRecognition()
+        })
+        present(listeningAlert, animated: true)
+
+        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+        guard let recognitionRequest = recognitionRequest else { return }
+
+        recognitionRequest.shouldReportPartialResults = true
+
+        let inputNode = audioEngine.inputNode
+        let recordingFormat = inputNode.outputFormat(forBus: 0)
+
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
+            recognitionRequest.append(buffer)
+        }
+
+        audioEngine.prepare()
+        try? audioEngine.start()
+
+        recognitionTask = recognizer.recognitionTask(with: recognitionRequest) { [weak self] result, error in
+            if let result = result {
+                let transcript = result.bestTranscription.formattedString
+
+                if result.isFinal {
+                    self?.stopVoiceRecognition()
+                    listeningAlert.dismiss(animated: true) {
+                        self?.urlTextField.text = transcript
+                        self?.loadURL(transcript)
+                    }
+                }
+            }
+
+            if error != nil {
+                self?.stopVoiceRecognition()
+                listeningAlert.dismiss(animated: true)
+            }
+        }
+    }
+
+    private func stopVoiceRecognition() {
+        audioEngine.stop()
+        audioEngine.inputNode.removeTap(onBus: 0)
+        recognitionRequest?.endAudio()
+        recognitionTask?.cancel()
+        recognitionRequest = nil
+        recognitionTask = nil
+    }
+
+    private func takeScreenshot() {
+        // Capture the webview as an image
+        let renderer = UIGraphicsImageRenderer(size: webView.bounds.size)
+        let image = renderer.image { context in
+            webView.drawHierarchy(in: webView.bounds, afterScreenUpdates: true)
+        }
+
+        // Save to photo library
+        UIImageWriteToSavedPhotosAlbum(image, self, #selector(screenshotSaved(_:didFinishSavingWithError:contextInfo:)), nil)
+    }
+
+    @objc private func screenshotSaved(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
+        if let error = error {
+            let alert = UIAlertController(title: "Error", message: "Failed to save screenshot: \(error.localizedDescription)", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+        } else {
+            let alert = UIAlertController(title: "Screenshot Saved", message: "Screenshot has been saved to your photo library.", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            alert.addAction(UIAlertAction(title: "Share", style: .default) { [weak self] _ in
+                let activityVC = UIActivityViewController(activityItems: [image], applicationActivities: nil)
+                self?.present(activityVC, animated: true)
+            })
+            present(alert, animated: true)
+        }
     }
 
     // MARK: - KVO

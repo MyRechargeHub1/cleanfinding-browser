@@ -672,6 +672,21 @@ function handleMenuAction(action) {
         case 'find':
             showFindInPage();
             break;
+        case 'page-info':
+            showPageInfo();
+            break;
+        case 'read-aloud':
+            toggleReadAloud();
+            break;
+        case 'clear-site-data':
+            clearCurrentSiteData();
+            break;
+        case 'voice-search':
+            startVoiceSearch();
+            break;
+        case 'screenshot':
+            takeScreenshot();
+            break;
     }
 }
 
@@ -992,6 +1007,242 @@ function translatePage() {
     if (currentUrl) {
         const translateUrl = `https://translate.google.com/translate?sl=auto&tl=en&u=${encodeURIComponent(currentUrl)}`;
         tab.webview.src = translateUrl;
+    }
+}
+
+/**
+ * Show page information dialog
+ */
+function showPageInfo() {
+    const tab = getActiveTab();
+    if (!tab) return;
+
+    const url = tab.url || elements.addressBar.value;
+    const title = tab.title || 'No title';
+
+    let domain = 'Unknown';
+    let isHttps = false;
+    try {
+        const urlObj = new URL(url);
+        domain = urlObj.hostname;
+        isHttps = urlObj.protocol === 'https:';
+    } catch (e) {}
+
+    const sslStatus = isHttps ? '🔒 Secure (HTTPS)' : '⚠️ Not Secure (HTTP)';
+
+    const info = `Connection: ${sslStatus}
+
+Domain: ${domain}
+
+Trackers Blocked: ${browser.privacyStats.trackersBlocked}
+
+Page Title: ${title}
+
+Full URL: ${url}`;
+
+    alert(info);
+}
+
+/**
+ * Read page content aloud using Web Speech API
+ */
+let speechSynthesis = window.speechSynthesis;
+let currentUtterance = null;
+let isSpeaking = false;
+
+function toggleReadAloud() {
+    if (isSpeaking) {
+        speechSynthesis.cancel();
+        isSpeaking = false;
+        return;
+    }
+
+    const tab = getActiveTab();
+    if (!tab || !tab.webview) return;
+
+    const extractScript = `
+        (function() {
+            var article = document.querySelector('article') ||
+                          document.querySelector('[role="main"]') ||
+                          document.querySelector('main') ||
+                          document.body;
+
+            var text = article.innerText || article.textContent || '';
+            text = text.replace(/\\s+/g, ' ').trim();
+            return text.substring(0, 5000);
+        })();
+    `;
+
+    tab.webview.executeJavaScript(extractScript).then(text => {
+        if (text && text.length > 0) {
+            currentUtterance = new SpeechSynthesisUtterance(text);
+            currentUtterance.onend = () => {
+                isSpeaking = false;
+            };
+            currentUtterance.onerror = () => {
+                isSpeaking = false;
+            };
+            isSpeaking = true;
+            speechSynthesis.speak(currentUtterance);
+        } else {
+            alert('No text content found on this page.');
+        }
+    }).catch(err => {
+        console.error('Read aloud error:', err);
+        alert('Could not read page content.');
+    });
+}
+
+/**
+ * Clear data for current site only
+ */
+async function clearCurrentSiteData() {
+    const tab = getActiveTab();
+    if (!tab) return;
+
+    const url = tab.url || elements.addressBar.value;
+    let domain = '';
+    try {
+        domain = new URL(url).hostname;
+    } catch (e) {
+        alert('Invalid URL');
+        return;
+    }
+
+    if (confirm(`Clear all data for ${domain}?\n\nThis includes cookies, cache, and stored data.`)) {
+        try {
+            // Clear via Electron API
+            const result = await window.cleanfindingAPI.clearSiteData(domain);
+            if (result && result.success) {
+                // Reload the page
+                tab.webview.reload();
+                alert(`Site data cleared for ${domain}`);
+            } else {
+                // Fallback: just clear cache and reload
+                tab.webview.reloadIgnoringCache();
+                alert(`Cache cleared for ${domain}`);
+            }
+        } catch (err) {
+            // Fallback
+            tab.webview.reloadIgnoringCache();
+            alert(`Cache cleared for ${domain}`);
+        }
+    }
+}
+
+/**
+ * Start voice search using Web Speech API
+ */
+let recognition = null;
+
+function startVoiceSearch() {
+    // Check if speech recognition is supported
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+        alert('Voice search is not supported in this browser.');
+        return;
+    }
+
+    if (recognition) {
+        recognition.stop();
+        recognition = null;
+        return;
+    }
+
+    recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = navigator.language || 'en-US';
+
+    // Show listening indicator
+    const originalPlaceholder = elements.addressBar.placeholder;
+    elements.addressBar.placeholder = '🎤 Listening...';
+    elements.addressBar.focus();
+
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        elements.addressBar.value = transcript;
+        elements.addressBar.placeholder = originalPlaceholder;
+        navigateToUrl(transcript);
+        recognition = null;
+    };
+
+    recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        elements.addressBar.placeholder = originalPlaceholder;
+        if (event.error !== 'aborted') {
+            alert('Voice search failed: ' + event.error);
+        }
+        recognition = null;
+    };
+
+    recognition.onend = () => {
+        elements.addressBar.placeholder = originalPlaceholder;
+    };
+
+    try {
+        recognition.start();
+    } catch (err) {
+        console.error('Failed to start speech recognition:', err);
+        elements.addressBar.placeholder = originalPlaceholder;
+        alert('Failed to start voice search.');
+        recognition = null;
+    }
+}
+
+/**
+ * Take a screenshot of the current page
+ */
+async function takeScreenshot() {
+    const tab = getActiveTab();
+    if (!tab || !tab.webview) return;
+
+    try {
+        // Use Electron's capturePage API via webview
+        const image = await tab.webview.capturePage();
+
+        if (image && !image.isEmpty()) {
+            // Convert to data URL and offer download
+            const dataUrl = image.toDataURL();
+
+            // Create download link
+            const link = document.createElement('a');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            link.download = `CleanFinding_${timestamp}.png`;
+            link.href = dataUrl;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            // Notify user
+            const originalPlaceholder = elements.addressBar.placeholder;
+            elements.addressBar.placeholder = 'Screenshot saved!';
+            setTimeout(() => {
+                elements.addressBar.placeholder = originalPlaceholder;
+            }, 2000);
+        } else {
+            alert('Failed to capture screenshot - page may be empty.');
+        }
+    } catch (err) {
+        console.error('Screenshot error:', err);
+        // Fallback: use html2canvas approach via injection
+        try {
+            const script = `
+                (function() {
+                    // Simple screenshot via canvas (visible area only)
+                    var canvas = document.createElement('canvas');
+                    canvas.width = window.innerWidth;
+                    canvas.height = window.innerHeight;
+                    // This is a simplified fallback - real implementation would need html2canvas
+                    return 'Screenshot not available in fallback mode';
+                })();
+            `;
+            await tab.webview.executeJavaScript(script);
+            alert('Screenshot feature requires Electron native API.');
+        } catch (e) {
+            alert('Failed to take screenshot.');
+        }
     }
 }
 
