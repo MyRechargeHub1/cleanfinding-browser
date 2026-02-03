@@ -1,6 +1,6 @@
 /**
  * CleanFinding Browser - Browser Logic
- * @version 1.4.0
+ * @version 1.7.0
  */
 
 // Browser state
@@ -11,8 +11,47 @@ const browser = {
     privacyStats: {
         trackersBlocked: 0,
         cookiesBlocked: 0
-    }
+    },
+    // Scrolling toolbar state
+    isToolbarVisible: true,
+    lastScrollY: 0,
+    SCROLL_THRESHOLD: 30,
+    // Reader mode state
+    isReaderMode: false,
+    // Zoom level (percentage)
+    currentZoom: 100,
+    // Night mode state
+    isNightMode: false
 };
+
+// Trusted domains - never block these (same as Android)
+const trustedDomains = [
+    'youtube.com', 'youtu.be', 'm.youtube.com',
+    'google.com', 'google.co', 'gstatic.com', 'googleapis.com',
+    'facebook.com', 'instagram.com', 'twitter.com', 'x.com',
+    'pinterest.com', 'linkedin.com', 'reddit.com',
+    'amazon.com', 'ebay.com', 'walmart.com',
+    'wikipedia.org', 'wikimedia.org',
+    'github.com', 'stackoverflow.com',
+    'cleanfinding.com',
+    'microsoft.com', 'apple.com', 'netflix.com'
+];
+
+// Blocked tracker domains
+const blockedDomains = [
+    'google-analytics.com', 'googletagmanager.com', 'doubleclick.net',
+    'facebook.net', 'connect.facebook.net', 'analytics.google.com',
+    'adservice.google.com', 'googlesyndication.com', 'googleadservices.com',
+    'mixpanel.com', 'hotjar.com', 'fullstory.com', 'amplitude.com',
+    'segment.com', 'heapanalytics.com', 'crazyegg.com', 'clarity.ms',
+    'adnxs.com', 'criteo.com', 'taboola.com', 'outbrain.com'
+];
+
+// Adult content keywords (check domain only, not full URL)
+const adultKeywords = [
+    'pornhub', 'xvideos', 'xnxx', 'redtube', 'youporn',
+    'xhamster', 'porn', 'xxx', 'adult'
+];
 
 // DOM Elements
 const elements = {
@@ -31,7 +70,8 @@ const elements = {
     privacyDashboardBtn: document.getElementById('privacy-dashboard-btn'),
     privacyDashboardModal: document.getElementById('privacy-dashboard-modal'),
     aboutModal: document.getElementById('about-modal'),
-    clearDataModal: document.getElementById('clear-data-modal')
+    clearDataModal: document.getElementById('clear-data-modal'),
+    browserChrome: document.querySelector('.browser-chrome')
 };
 
 /**
@@ -168,7 +208,36 @@ function setupEventListeners() {
                     e.preventDefault();
                     elements.addressBar.focus();
                     break;
+                case '+':
+                case '=':
+                    e.preventDefault();
+                    zoomIn();
+                    break;
+                case '-':
+                    e.preventDefault();
+                    zoomOut();
+                    break;
+                case '0':
+                    e.preventDefault();
+                    setZoom(100);
+                    break;
+                case 'f':
+                    e.preventDefault();
+                    showFindInPage();
+                    break;
+                case 'g':
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        findPrevious();
+                    } else {
+                        findNext();
+                    }
+                    break;
             }
+        }
+        // Escape to clear find
+        if (e.key === 'Escape' && findInPageActive) {
+            clearFind();
         }
     });
 }
@@ -294,6 +363,8 @@ function setupWebviewListeners(webview, tab) {
     webview.addEventListener('did-start-loading', () => {
         if (tab.id === browser.activeTabId) {
             updateNavigationButtons();
+            // Show toolbar when loading starts
+            showToolbar();
         }
     });
 
@@ -301,6 +372,33 @@ function setupWebviewListeners(webview, tab) {
         if (tab.id === browser.activeTabId) {
             updateNavigationButtons();
         }
+    });
+
+    // Inject scroll detection after page loads
+    webview.addEventListener('did-finish-load', () => {
+        injectScrollDetection(webview);
+    });
+
+    // Capture console messages for scroll detection
+    webview.addEventListener('console-message', (e) => {
+        if (e.message && e.message.startsWith('__CLEANFINDING_SCROLL__:')) {
+            const scrollY = parseInt(e.message.split(':')[1], 10);
+            if (!isNaN(scrollY) && tab.id === browser.activeTabId) {
+                handleWebviewScroll(scrollY);
+            }
+        }
+    });
+
+    // Handle fullscreen requests (for YouTube videos)
+    webview.addEventListener('enter-html-full-screen', () => {
+        document.body.classList.add('fullscreen-video');
+        elements.browserChrome.style.display = 'none';
+    });
+
+    webview.addEventListener('leave-html-full-screen', () => {
+        document.body.classList.remove('fullscreen-video');
+        elements.browserChrome.style.display = '';
+        showToolbar();
     });
 
     webview.addEventListener('page-title-updated', (e) => {
@@ -332,6 +430,11 @@ function setupWebviewListeners(webview, tab) {
 
     webview.addEventListener('new-window', (e) => {
         e.preventDefault();
+        // Check if the new URL should be blocked
+        if (isBlockedUrl(e.url)) {
+            console.log('Blocked new window URL:', e.url);
+            return;
+        }
         createTab(e.url);
     });
 
@@ -424,6 +527,15 @@ async function navigateToUrl(input) {
         alert('Invalid URL scheme. Only http:// and https:// URLs are allowed.');
         return;
     }
+
+    // Check if URL should be blocked
+    if (isBlockedUrl(url)) {
+        alert('This content has been blocked by CleanFinding Browser for your safety.');
+        return;
+    }
+
+    // Show toolbar when navigating
+    showToolbar();
 
     tab.webview.src = url;
 }
@@ -530,6 +642,36 @@ function handleMenuAction(action) {
         case 'about':
             elements.aboutModal.style.display = 'flex';
             break;
+        case 'share':
+            shareCurrentPage();
+            break;
+        case 'copy-url':
+            copyUrlToClipboard();
+            break;
+        case 'pip':
+            enterPictureInPicture();
+            break;
+        case 'reader-mode':
+            toggleReaderMode();
+            break;
+        case 'zoom-in':
+            zoomIn();
+            break;
+        case 'zoom-out':
+            zoomOut();
+            break;
+        case 'zoom-reset':
+            setZoom(100);
+            break;
+        case 'night-mode':
+            toggleNightMode();
+            break;
+        case 'translate':
+            translatePage();
+            break;
+        case 'find':
+            showFindInPage();
+            break;
     }
 }
 
@@ -580,6 +722,454 @@ async function loadDuckPlayerPage(videoId, originalUrl) {
     // Update tracker count
     browser.privacyStats.trackersBlocked++;
     elements.blockedCount.textContent = browser.privacyStats.trackersBlocked;
+}
+
+/**
+ * Enter Picture-in-Picture mode for the current video
+ * Allows watching videos in a floating window
+ */
+async function enterPictureInPicture() {
+    const tab = getActiveTab();
+    if (!tab || !tab.webview) return;
+
+    try {
+        // Inject script to find and enter PiP for any playing video
+        const script = `
+            (function() {
+                const videos = document.querySelectorAll('video');
+                for (const video of videos) {
+                    if (!video.paused || video.currentTime > 0) {
+                        if (document.pictureInPictureEnabled && !video.disablePictureInPicture) {
+                            video.requestPictureInPicture()
+                                .then(() => console.log('PiP: Entered Picture-in-Picture mode'))
+                                .catch(err => console.log('PiP: Failed - ' + err.message));
+                            return true;
+                        }
+                    }
+                }
+                // If no active video found, try the first video
+                if (videos.length > 0) {
+                    const video = videos[0];
+                    if (document.pictureInPictureEnabled && !video.disablePictureInPicture) {
+                        video.requestPictureInPicture()
+                            .then(() => console.log('PiP: Entered Picture-in-Picture mode'))
+                            .catch(err => console.log('PiP: Failed - ' + err.message));
+                        return true;
+                    }
+                }
+                return false;
+            })();
+        `;
+
+        const result = await tab.webview.executeJavaScript(script);
+        if (!result) {
+            alert('No video found on this page, or Picture-in-Picture is not supported.');
+        }
+    } catch (error) {
+        console.error('PiP error:', error);
+        alert('Picture-in-Picture is not available for this page.');
+    }
+}
+
+/**
+ * Copy current URL to clipboard
+ */
+function copyUrlToClipboard() {
+    const tab = getActiveTab();
+    if (!tab) return;
+
+    const url = tab.url || elements.addressBar.value;
+    if (url) {
+        navigator.clipboard.writeText(url).then(() => {
+            // Show a brief notification
+            const originalPlaceholder = elements.addressBar.placeholder;
+            elements.addressBar.placeholder = 'URL copied!';
+            setTimeout(() => {
+                elements.addressBar.placeholder = originalPlaceholder;
+            }, 1500);
+        }).catch(err => {
+            console.error('Failed to copy URL:', err);
+            alert('Failed to copy URL to clipboard');
+        });
+    }
+}
+
+/**
+ * Share current page
+ */
+function shareCurrentPage() {
+    const tab = getActiveTab();
+    if (!tab) return;
+
+    const url = tab.url || elements.addressBar.value;
+    const title = tab.title || 'Check this out';
+
+    if (navigator.share) {
+        navigator.share({
+            title: title,
+            url: url
+        }).catch(err => {
+            console.log('Share cancelled or failed:', err);
+        });
+    } else {
+        // Fallback: copy to clipboard
+        copyUrlToClipboard();
+    }
+}
+
+/**
+ * Toggle Reader Mode - extracts article content for clean reading
+ */
+async function toggleReaderMode() {
+    const tab = getActiveTab();
+    if (!tab || !tab.webview) return;
+
+    browser.isReaderMode = !browser.isReaderMode;
+
+    if (browser.isReaderMode) {
+        const readerScript = `
+            (function() {
+                var article = document.querySelector('article') ||
+                              document.querySelector('[role="main"]') ||
+                              document.querySelector('main') ||
+                              document.querySelector('.post-content') ||
+                              document.querySelector('.article-content') ||
+                              document.querySelector('.entry-content');
+
+                var title = document.querySelector('h1')?.textContent || document.title;
+                var content = '';
+
+                if (article) {
+                    content = article.innerHTML;
+                } else {
+                    var paragraphs = document.querySelectorAll('p');
+                    paragraphs.forEach(function(p) {
+                        if (p.textContent.length > 50) {
+                            content += '<p>' + p.textContent + '</p>';
+                        }
+                    });
+                }
+
+                if (content.length < 100) {
+                    return { success: false };
+                }
+
+                var readerHtml = '<!DOCTYPE html><html><head>' +
+                    '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+                    '<style>' +
+                    'body { font-family: Georgia, serif; max-width: 680px; margin: 0 auto; padding: 20px; ' +
+                    'line-height: 1.8; font-size: 18px; color: #333; background: #fafafa; }' +
+                    'h1 { font-size: 28px; line-height: 1.3; margin-bottom: 20px; }' +
+                    'img { max-width: 100%; height: auto; }' +
+                    'a { color: #0066cc; }' +
+                    '@media (prefers-color-scheme: dark) {' +
+                    'body { background: #1a1a1a; color: #e0e0e0; }' +
+                    'a { color: #6699ff; }' +
+                    '}' +
+                    '</style></head><body>' +
+                    '<h1>' + title + '</h1>' +
+                    content +
+                    '</body></html>';
+
+                document.open();
+                document.write(readerHtml);
+                document.close();
+                return { success: true };
+            })();
+        `;
+
+        try {
+            const result = await tab.webview.executeJavaScript(readerScript);
+            if (!result.success) {
+                alert('Could not extract article content from this page.');
+                browser.isReaderMode = false;
+            }
+        } catch (err) {
+            console.error('Reader mode error:', err);
+            browser.isReaderMode = false;
+        }
+    } else {
+        // Exit reader mode - reload the page
+        tab.webview.reload();
+    }
+}
+
+/**
+ * Show zoom controls dialog
+ */
+function showZoomDialog() {
+    const zoomLevels = [50, 75, 100, 125, 150, 175, 200];
+    const currentIndex = zoomLevels.indexOf(browser.currentZoom);
+
+    const newZoom = prompt(`Current zoom: ${browser.currentZoom}%\nEnter new zoom level (50-200):`, browser.currentZoom);
+    if (newZoom !== null) {
+        const zoom = parseInt(newZoom, 10);
+        if (zoom >= 50 && zoom <= 200) {
+            setZoom(zoom);
+        } else {
+            alert('Please enter a value between 50 and 200');
+        }
+    }
+}
+
+/**
+ * Set zoom level
+ */
+function setZoom(level) {
+    const tab = getActiveTab();
+    if (!tab || !tab.webview) return;
+
+    browser.currentZoom = level;
+    tab.webview.setZoomFactor(level / 100);
+}
+
+/**
+ * Zoom in by 25%
+ */
+function zoomIn() {
+    if (browser.currentZoom < 200) {
+        setZoom(browser.currentZoom + 25);
+    }
+}
+
+/**
+ * Zoom out by 25%
+ */
+function zoomOut() {
+    if (browser.currentZoom > 50) {
+        setZoom(browser.currentZoom - 25);
+    }
+}
+
+/**
+ * Toggle night mode / blue light filter
+ */
+async function toggleNightMode() {
+    const tab = getActiveTab();
+    if (!tab || !tab.webview) return;
+
+    browser.isNightMode = !browser.isNightMode;
+
+    const nightModeScript = `
+        (function() {
+            var existingFilter = document.getElementById('cleanfinding-night-mode');
+            if (existingFilter) {
+                existingFilter.remove();
+                return 'disabled';
+            }
+
+            var style = document.createElement('style');
+            style.id = 'cleanfinding-night-mode';
+            style.textContent = \`
+                html {
+                    filter: sepia(30%) brightness(90%) !important;
+                    background-color: #1a1a1a !important;
+                }
+                body {
+                    background-color: #1a1a1a !important;
+                }
+            \`;
+            document.head.appendChild(style);
+            return 'enabled';
+        })();
+    `;
+
+    try {
+        await tab.webview.executeJavaScript(nightModeScript);
+    } catch (err) {
+        console.error('Night mode error:', err);
+    }
+}
+
+/**
+ * Translate the current page using Google Translate
+ */
+function translatePage() {
+    const tab = getActiveTab();
+    if (!tab) return;
+
+    const currentUrl = tab.url || elements.addressBar.value;
+    if (currentUrl) {
+        const translateUrl = `https://translate.google.com/translate?sl=auto&tl=en&u=${encodeURIComponent(currentUrl)}`;
+        tab.webview.src = translateUrl;
+    }
+}
+
+/**
+ * Find in page functionality
+ */
+let findInPageActive = false;
+let findInPageQuery = '';
+
+function showFindInPage() {
+    const query = prompt('Find in page:', findInPageQuery);
+    if (query !== null && query.trim() !== '') {
+        findInPageQuery = query.trim();
+        findInPageActive = true;
+        performFind(findInPageQuery);
+    } else if (query === '') {
+        clearFind();
+    }
+}
+
+function performFind(query) {
+    const tab = getActiveTab();
+    if (!tab || !tab.webview) return;
+
+    // Use Electron's findInPage API
+    tab.webview.findInPage(query);
+}
+
+function findNext() {
+    if (findInPageActive && findInPageQuery) {
+        const tab = getActiveTab();
+        if (tab && tab.webview) {
+            tab.webview.findInPage(findInPageQuery, { forward: true, findNext: true });
+        }
+    }
+}
+
+function findPrevious() {
+    if (findInPageActive && findInPageQuery) {
+        const tab = getActiveTab();
+        if (tab && tab.webview) {
+            tab.webview.findInPage(findInPageQuery, { forward: false, findNext: true });
+        }
+    }
+}
+
+function clearFind() {
+    const tab = getActiveTab();
+    if (tab && tab.webview) {
+        tab.webview.stopFindInPage('clearSelection');
+    }
+    findInPageActive = false;
+    findInPageQuery = '';
+}
+
+/**
+ * Check if URL should be blocked (same logic as Android)
+ */
+function isBlockedUrl(url) {
+    const lowerUrl = url.toLowerCase();
+
+    // CRITICAL: Whitelist trusted domains - never block these
+    for (const trusted of trustedDomains) {
+        if (lowerUrl.includes(trusted)) {
+            return false;
+        }
+    }
+
+    // Check tracker/ad domains
+    for (const domain of blockedDomains) {
+        if (lowerUrl.includes(domain)) {
+            return true;
+        }
+    }
+
+    // Check adult content - only check the DOMAIN part, not full URL
+    try {
+        const urlObj = new URL(url);
+        const host = urlObj.hostname.toLowerCase();
+        for (const keyword of adultKeywords) {
+            if (host.includes(keyword)) {
+                return true;
+            }
+        }
+    } catch (e) {
+        // If URL parsing fails, do basic check
+        const hostPart = lowerUrl.split('://')[1]?.split('/')[0] || '';
+        for (const keyword of adultKeywords) {
+            if (hostPart.includes(keyword)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Hide toolbar with animation (Chrome-like scroll behavior)
+ */
+function hideToolbar() {
+    if (!browser.isToolbarVisible) return;
+    browser.isToolbarVisible = false;
+
+    if (elements.browserChrome) {
+        elements.browserChrome.style.transition = 'transform 0.2s ease-out';
+        elements.browserChrome.style.transform = 'translateY(-100%)';
+    }
+}
+
+/**
+ * Show toolbar with animation (Chrome-like scroll behavior)
+ */
+function showToolbar() {
+    if (browser.isToolbarVisible) return;
+    browser.isToolbarVisible = true;
+
+    if (elements.browserChrome) {
+        elements.browserChrome.style.transition = 'transform 0.2s ease-out';
+        elements.browserChrome.style.transform = 'translateY(0)';
+    }
+}
+
+/**
+ * Handle scroll events from webview
+ */
+function handleWebviewScroll(scrollY) {
+    const diff = scrollY - browser.lastScrollY;
+
+    // Only respond to significant scroll changes
+    if (Math.abs(diff) > browser.SCROLL_THRESHOLD) {
+        if (diff > 0 && browser.isToolbarVisible) {
+            // Scrolling DOWN - hide toolbar
+            hideToolbar();
+        } else if (diff < 0 && !browser.isToolbarVisible) {
+            // Scrolling UP - show toolbar
+            showToolbar();
+        }
+    }
+
+    // Always show toolbar when at top of page
+    if (scrollY <= 10 && !browser.isToolbarVisible) {
+        showToolbar();
+    }
+
+    browser.lastScrollY = scrollY;
+}
+
+/**
+ * Inject scroll detection script into webview
+ */
+function injectScrollDetection(webview) {
+    const script = `
+        (function() {
+            if (window._cleanfindingScrollSetup) return;
+            window._cleanfindingScrollSetup = true;
+
+            let lastScrollY = 0;
+            let ticking = false;
+
+            function onScroll() {
+                if (!ticking) {
+                    window.requestAnimationFrame(function() {
+                        // Send scroll position to parent via console (will be captured)
+                        console.log('__CLEANFINDING_SCROLL__:' + window.scrollY);
+                        ticking = false;
+                    });
+                    ticking = true;
+                }
+            }
+
+            window.addEventListener('scroll', onScroll, { passive: true });
+        })();
+    `;
+
+    webview.executeJavaScript(script).catch(err => {
+        // Ignore errors - script might not be ready yet
+    });
 }
 
 // Initialize on load

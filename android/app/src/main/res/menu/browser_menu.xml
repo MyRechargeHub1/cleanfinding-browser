@@ -34,6 +34,24 @@
         android:id="@+id/menu_share"
         android:title="Share" />
     <item
+        android:id="@+id/menu_copy_url"
+        android:title="Copy URL" />
+    <item
+        android:id="@+id/menu_pip"
+        android:title="Picture-in-Picture" />
+    <item
+        android:id="@+id/menu_reader_mode"
+        android:title="Reader Mode" />
+    <item
+        android:id="@+id/menu_zoom"
+        android:title="Zoom" />
+    <item
+        android:id="@+id/menu_night_mode"
+        android:title="Night Mode" />
+    <item
+        android:id="@+id/menu_translate"
+        android:title="Translate Page" />
+    <item
         android:id="@+id/menu_desktop_site"
         android:title="Desktop site"
         android:checkable="true" />

@@ -1,12 +1,21 @@
 package com.cleanfinding.browser
 
 import android.annotation.SuppressLint
+import android.app.PictureInPictureParams
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.util.Rational
+import android.view.GestureDetector
 import android.view.KeyEvent
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.webkit.*
@@ -16,6 +25,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
 
@@ -74,6 +84,21 @@ class MainActivity : AppCompatActivity() {
     private var lastScrollY = 0
     private var isToolbarVisible = true
     private val SCROLL_THRESHOLD = 10  // Minimum scroll distance to trigger hide/show
+
+    // Picture-in-Picture support
+    private var isInPipMode = false
+
+    // Reader mode support
+    private var isReaderMode = false
+    private var originalHtml: String? = null
+
+    // Zoom level (percentage)
+    private var currentZoom = 100
+
+    // Gesture detection for swipe navigation
+    private lateinit var gestureDetector: GestureDetector
+    private val SWIPE_THRESHOLD = 100
+    private val SWIPE_VELOCITY_THRESHOLD = 100
 
     // Tracker domains to block
     private val blockedDomains = listOf(
@@ -152,9 +177,48 @@ class MainActivity : AppCompatActivity() {
 
         initViews()
         setupListeners()
+        setupGestureDetector()
 
         // Create initial tab
         createNewTab(intent?.data?.toString() ?: homeUrl)
+    }
+
+    /**
+     * Setup gesture detector for swipe navigation (back/forward)
+     */
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupGestureDetector() {
+        gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onFling(
+                e1: MotionEvent?,
+                e2: MotionEvent,
+                velocityX: Float,
+                velocityY: Float
+            ): Boolean {
+                if (e1 == null) return false
+
+                val diffX = e2.x - e1.x
+                val diffY = e2.y - e1.y
+
+                // Only detect horizontal swipes (ignore vertical scrolling)
+                if (abs(diffX) > abs(diffY) && abs(diffX) > SWIPE_THRESHOLD && abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
+                    if (diffX > 0) {
+                        // Swipe right -> Go back
+                        if (webView.canGoBack()) {
+                            webView.goBack()
+                            return true
+                        }
+                    } else {
+                        // Swipe left -> Go forward
+                        if (webView.canGoForward()) {
+                            webView.goForward()
+                            return true
+                        }
+                    }
+                }
+                return false
+            }
+        })
     }
 
     private fun initViews() {
@@ -183,13 +247,19 @@ class MainActivity : AppCompatActivity() {
         appBarLayout = findViewById(R.id.appBarLayout)
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
+    @SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
     private fun setupWebView(wv: WebView, isIncognito: Boolean = false) {
         // CRITICAL FIX: Enable hardware acceleration for video playback
         wv.setLayerType(View.LAYER_TYPE_HARDWARE, null)
 
         // Enable nested scrolling for CoordinatorLayout/AppBarLayout integration
         wv.isNestedScrollingEnabled = true
+
+        // SWIPE NAVIGATION: Detect horizontal swipes for back/forward navigation
+        wv.setOnTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
+            false // Don't consume the event, let WebView handle it too
+        }
 
         // CHROME-LIKE: Add scroll listener to hide/show toolbar based on scroll direction
         wv.setOnScrollChangeListener { _, _, scrollY, _, oldScrollY ->
@@ -999,6 +1069,30 @@ class MainActivity : AppCompatActivity() {
                     shareCurrentPage()
                     true
                 }
+                R.id.menu_copy_url -> {
+                    copyUrlToClipboard()
+                    true
+                }
+                R.id.menu_pip -> {
+                    enterPipMode()
+                    true
+                }
+                R.id.menu_reader_mode -> {
+                    toggleReaderMode()
+                    true
+                }
+                R.id.menu_zoom -> {
+                    showZoomControls()
+                    true
+                }
+                R.id.menu_night_mode -> {
+                    toggleNightMode()
+                    true
+                }
+                R.id.menu_translate -> {
+                    translatePage()
+                    true
+                }
                 R.id.menu_desktop_site -> {
                     toggleDesktopMode()
                     true
@@ -1199,6 +1293,239 @@ class MainActivity : AppCompatActivity() {
             customViewContainer.visibility = View.GONE
             findViewById<androidx.coordinatorlayout.widget.CoordinatorLayout>(R.id.mainContent)?.visibility = View.VISIBLE
         }
+    }
+
+    /**
+     * Enter Picture-in-Picture mode for video playback
+     * Allows users to watch videos in a floating window while using other apps
+     */
+    private fun enterPipMode() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                // Build PiP parameters with 16:9 aspect ratio (standard video)
+                val pipParams = PictureInPictureParams.Builder()
+                    .setAspectRatio(Rational(16, 9))
+                    .build()
+
+                enterPictureInPictureMode(pipParams)
+            } catch (e: Exception) {
+                android.util.Log.e("PiP", "Error entering PiP mode: ${e.message}")
+                Toast.makeText(this, "Picture-in-Picture not available", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(this, "Picture-in-Picture requires Android 8.0+", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * Handle PiP mode changes
+     */
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        isInPipMode = isInPictureInPictureMode
+
+        if (isInPictureInPictureMode) {
+            // Entered PiP mode - hide UI elements
+            appBarLayout.visibility = View.GONE
+        } else {
+            // Exited PiP mode - restore UI
+            appBarLayout.visibility = View.VISIBLE
+            showToolbar()
+        }
+    }
+
+    /**
+     * When user leaves the app during fullscreen video, enter PiP mode
+     */
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+
+        // If playing fullscreen video, enter PiP mode when user presses home
+        if (customView != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            enterPipMode()
+        }
+    }
+
+    /**
+     * Copy current URL to clipboard
+     */
+    private fun copyUrlToClipboard() {
+        val url = webView.url ?: return
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText("URL", url)
+        clipboard.setPrimaryClip(clip)
+        Toast.makeText(this, "URL copied to clipboard", Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * Toggle Reader Mode - extracts and displays article content in a clean format
+     */
+    private fun toggleReaderMode() {
+        if (isReaderMode) {
+            // Exit reader mode - reload the page
+            isReaderMode = false
+            webView.reload()
+            Toast.makeText(this, "Reader mode disabled", Toast.LENGTH_SHORT).show()
+        } else {
+            // Enter reader mode - extract article content
+            isReaderMode = true
+            injectReaderModeScript()
+            Toast.makeText(this, "Reader mode enabled", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * Inject JavaScript to extract and display article content in reader mode
+     */
+    private fun injectReaderModeScript() {
+        val readerScript = """
+            (function() {
+                // Simple article extraction
+                var article = document.querySelector('article') ||
+                              document.querySelector('[role="main"]') ||
+                              document.querySelector('main') ||
+                              document.querySelector('.post-content') ||
+                              document.querySelector('.article-content') ||
+                              document.querySelector('.entry-content');
+
+                var title = document.querySelector('h1')?.textContent || document.title;
+                var content = '';
+
+                if (article) {
+                    content = article.innerHTML;
+                } else {
+                    // Fallback: get all paragraphs
+                    var paragraphs = document.querySelectorAll('p');
+                    paragraphs.forEach(function(p) {
+                        if (p.textContent.length > 50) {
+                            content += '<p>' + p.textContent + '</p>';
+                        }
+                    });
+                }
+
+                if (content.length < 100) {
+                    alert('Could not extract article content from this page.');
+                    return;
+                }
+
+                // Create reader mode HTML
+                var readerHtml = '<!DOCTYPE html><html><head>' +
+                    '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+                    '<style>' +
+                    'body { font-family: Georgia, serif; max-width: 680px; margin: 0 auto; padding: 20px; ' +
+                    'line-height: 1.8; font-size: 18px; color: #333; background: #fafafa; }' +
+                    'h1 { font-size: 28px; line-height: 1.3; margin-bottom: 20px; }' +
+                    'img { max-width: 100%; height: auto; }' +
+                    'a { color: #0066cc; }' +
+                    '@media (prefers-color-scheme: dark) {' +
+                    'body { background: #1a1a1a; color: #e0e0e0; }' +
+                    'a { color: #6699ff; }' +
+                    '}' +
+                    '</style></head><body>' +
+                    '<h1>' + title + '</h1>' +
+                    content +
+                    '</body></html>';
+
+                document.open();
+                document.write(readerHtml);
+                document.close();
+            })();
+        """.trimIndent()
+
+        webView.evaluateJavascript(readerScript, null)
+    }
+
+    /**
+     * Show zoom controls dialog
+     */
+    private fun showZoomControls() {
+        val zoomLevels = arrayOf("50%", "75%", "100%", "125%", "150%", "175%", "200%")
+        val zoomValues = intArrayOf(50, 75, 100, 125, 150, 175, 200)
+
+        val currentIndex = zoomValues.indexOf(currentZoom).takeIf { it >= 0 } ?: 2
+
+        AlertDialog.Builder(this)
+            .setTitle("Zoom Level: $currentZoom%")
+            .setSingleChoiceItems(zoomLevels, currentIndex) { dialog, which ->
+                currentZoom = zoomValues[which]
+                webView.settings.textZoom = currentZoom
+                Toast.makeText(this, "Zoom: $currentZoom%", Toast.LENGTH_SHORT).show()
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    /**
+     * Zoom in by 25%
+     */
+    private fun zoomIn() {
+        if (currentZoom < 200) {
+            currentZoom += 25
+            webView.settings.textZoom = currentZoom
+            Toast.makeText(this, "Zoom: $currentZoom%", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * Zoom out by 25%
+     */
+    private fun zoomOut() {
+        if (currentZoom > 50) {
+            currentZoom -= 25
+            webView.settings.textZoom = currentZoom
+            Toast.makeText(this, "Zoom: $currentZoom%", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * Toggle night mode / blue light filter
+     */
+    private fun toggleNightMode() {
+        val nightModeScript = """
+            (function() {
+                var existingFilter = document.getElementById('cleanfinding-night-mode');
+                if (existingFilter) {
+                    existingFilter.remove();
+                    return 'disabled';
+                }
+
+                var style = document.createElement('style');
+                style.id = 'cleanfinding-night-mode';
+                style.textContent = `
+                    html {
+                        filter: sepia(30%) brightness(90%) !important;
+                        background-color: #1a1a1a !important;
+                    }
+                    body {
+                        background-color: #1a1a1a !important;
+                    }
+                `;
+                document.head.appendChild(style);
+                return 'enabled';
+            })();
+        """.trimIndent()
+
+        webView.evaluateJavascript(nightModeScript) { result ->
+            val status = result.replace("\"", "")
+            Toast.makeText(
+                this,
+                if (status == "enabled") "Night mode enabled" else "Night mode disabled",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    /**
+     * Translate page using Google Translate
+     */
+    private fun translatePage() {
+        val currentUrl = webView.url ?: return
+
+        // Use Google Translate to translate the page
+        val translateUrl = "https://translate.google.com/translate?sl=auto&tl=en&u=${Uri.encode(currentUrl)}"
+        webView.loadUrl(translateUrl)
+        Toast.makeText(this, "Translating page...", Toast.LENGTH_SHORT).show()
     }
 
     // Desktop mode - Chrome-like implementation

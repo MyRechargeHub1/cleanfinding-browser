@@ -12,6 +12,19 @@ class BrowserViewController: UIViewController {
 
     private let homeURL = URL(string: "https://cleanfinding.com")!
 
+    // CRITICAL: Trusted domains - never block these (same as Android)
+    private let trustedDomains = [
+        "youtube.com", "youtu.be", "m.youtube.com",
+        "google.com", "google.co", "gstatic.com", "googleapis.com",
+        "facebook.com", "instagram.com", "twitter.com", "x.com",
+        "pinterest.com", "linkedin.com", "reddit.com",
+        "amazon.com", "ebay.com", "walmart.com",
+        "wikipedia.org", "wikimedia.org",
+        "github.com", "stackoverflow.com",
+        "cleanfinding.com",
+        "microsoft.com", "apple.com", "netflix.com"
+    ]
+
     // Blocked domains
     private let blockedDomains = [
         "google-analytics.com", "googletagmanager.com", "doubleclick.net",
@@ -22,11 +35,28 @@ class BrowserViewController: UIViewController {
         "adnxs.com", "criteo.com", "taboola.com", "outbrain.com"
     ]
 
-    // Adult content keywords
+    // Adult content keywords (check domain only, not full URL)
     private let adultKeywords = [
         "pornhub", "xvideos", "xnxx", "redtube", "youporn",
         "xhamster", "porn", "xxx", "adult"
     ]
+
+    // Scrolling toolbar state
+    private var isToolbarVisible = true
+    private var lastScrollY: CGFloat = 0
+    private let scrollThreshold: CGFloat = 30
+    private var urlBarTopConstraint: NSLayoutConstraint?
+    private var toolbarBottomConstraint: NSLayoutConstraint?
+    private var urlBarView: UIView?
+
+    // Reader mode state
+    private var isReaderMode = false
+
+    // Zoom level
+    private var currentZoom: CGFloat = 1.0
+
+    // Night mode state
+    private var isNightMode = false
 
     // MARK: - Lifecycle
 
@@ -137,6 +167,7 @@ class BrowserViewController: UIViewController {
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = true
         webView.scrollView.contentInsetAdjustmentBehavior = .automatic
+        webView.scrollView.delegate = self  // Add scroll delegate for toolbar hide/show
         webView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(webView)
 
@@ -208,15 +239,35 @@ class BrowserViewController: UIViewController {
     private func isBlockedURL(_ url: String) -> Bool {
         let lowerURL = url.lowercased()
 
+        // CRITICAL: Whitelist trusted domains - never block these
+        for trusted in trustedDomains {
+            if lowerURL.contains(trusted) {
+                return false
+            }
+        }
+
+        // Check tracker/ad domains
         for domain in blockedDomains {
             if lowerURL.contains(domain) {
                 return true
             }
         }
 
-        for keyword in adultKeywords {
-            if lowerURL.contains(keyword) {
-                return true
+        // Check adult content - only check the DOMAIN part, not full URL
+        // This prevents false positives from video titles, search queries, etc.
+        if let urlObj = URL(string: url), let host = urlObj.host?.lowercased() {
+            for keyword in adultKeywords {
+                if host.contains(keyword) {
+                    return true
+                }
+            }
+        } else {
+            // Fallback: basic host extraction
+            let hostPart = lowerURL.components(separatedBy: "://").last?.components(separatedBy: "/").first ?? ""
+            for keyword in adultKeywords {
+                if hostPart.contains(keyword) {
+                    return true
+                }
             }
         }
 
@@ -263,6 +314,14 @@ class BrowserViewController: UIViewController {
                 return;
             }
 
+            // CRITICAL: Skip ad blocking on YouTube to prevent video playback issues
+            // YouTube's internal classes contain "ad" patterns that our selectors would incorrectly match
+            if (window.location.hostname.indexOf('youtube.com') !== -1 ||
+                window.location.hostname.indexOf('youtu.be') !== -1) {
+                console.log('CleanFinding: Skipping ad blocking on YouTube for proper video playback');
+                return;
+            }
+
             var blockedDomains = [\(domainsJSON)];
 
             // Override fetch
@@ -276,7 +335,7 @@ class BrowserViewController: UIViewController {
                 return originalFetch.apply(this, arguments);
             };
 
-            // Remove ad containers
+            // Remove ad containers (skip on YouTube)
             function removeAds() {
                 var selectors = ['[class*="ad-"]', '[class*="ads-"]', '[id*="ad-"]', 'ins.adsbygoogle'];
                 selectors.forEach(function(selector) {
@@ -324,6 +383,225 @@ class BrowserViewController: UIViewController {
 
     @objc private func goHome() {
         loadHomePage()
+    }
+
+    @objc private func showMenu() {
+        let alert = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+
+        alert.addAction(UIAlertAction(title: "Share", style: .default) { [weak self] _ in
+            self?.shareCurrentPage()
+        })
+
+        alert.addAction(UIAlertAction(title: "Copy URL", style: .default) { [weak self] _ in
+            self?.copyURLToClipboard()
+        })
+
+        alert.addAction(UIAlertAction(title: "Reader Mode", style: .default) { [weak self] _ in
+            self?.toggleReaderMode()
+        })
+
+        alert.addAction(UIAlertAction(title: "Night Mode", style: .default) { [weak self] _ in
+            self?.toggleNightMode()
+        })
+
+        alert.addAction(UIAlertAction(title: "Zoom In", style: .default) { [weak self] _ in
+            self?.zoomIn()
+        })
+
+        alert.addAction(UIAlertAction(title: "Zoom Out", style: .default) { [weak self] _ in
+            self?.zoomOut()
+        })
+
+        alert.addAction(UIAlertAction(title: "Translate Page", style: .default) { [weak self] _ in
+            self?.translatePage()
+        })
+
+        alert.addAction(UIAlertAction(title: "Find in Page", style: .default) { [weak self] _ in
+            self?.showFindInPage()
+        })
+
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+
+        present(alert, animated: true)
+    }
+
+    // MARK: - Feature Actions
+
+    private func shareCurrentPage() {
+        guard let url = webView.url else { return }
+
+        let activityVC = UIActivityViewController(
+            activityItems: [url],
+            applicationActivities: nil
+        )
+        present(activityVC, animated: true)
+    }
+
+    private func copyURLToClipboard() {
+        guard let url = webView.url?.absoluteString else { return }
+        UIPasteboard.general.string = url
+
+        // Show brief feedback
+        let alert = UIAlertController(title: nil, message: "URL copied to clipboard", preferredStyle: .alert)
+        present(alert, animated: true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            alert.dismiss(animated: true)
+        }
+    }
+
+    private func toggleReaderMode() {
+        isReaderMode.toggle()
+
+        if isReaderMode {
+            let readerScript = """
+            (function() {
+                var article = document.querySelector('article') ||
+                              document.querySelector('[role="main"]') ||
+                              document.querySelector('main') ||
+                              document.querySelector('.post-content') ||
+                              document.querySelector('.entry-content');
+
+                var title = document.querySelector('h1')?.textContent || document.title;
+                var content = '';
+
+                if (article) {
+                    content = article.innerHTML;
+                } else {
+                    var paragraphs = document.querySelectorAll('p');
+                    paragraphs.forEach(function(p) {
+                        if (p.textContent.length > 50) {
+                            content += '<p>' + p.textContent + '</p>';
+                        }
+                    });
+                }
+
+                if (content.length < 100) {
+                    return false;
+                }
+
+                var readerHtml = '<!DOCTYPE html><html><head>' +
+                    '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+                    '<style>' +
+                    'body { font-family: Georgia, serif; max-width: 680px; margin: 0 auto; padding: 20px; ' +
+                    'line-height: 1.8; font-size: 18px; color: #333; background: #fafafa; }' +
+                    'h1 { font-size: 28px; line-height: 1.3; margin-bottom: 20px; }' +
+                    'img { max-width: 100%; height: auto; }' +
+                    '@media (prefers-color-scheme: dark) {' +
+                    'body { background: #1a1a1a; color: #e0e0e0; }' +
+                    '}' +
+                    '</style></head><body>' +
+                    '<h1>' + title + '</h1>' +
+                    content +
+                    '</body></html>';
+
+                document.open();
+                document.write(readerHtml);
+                document.close();
+                return true;
+            })();
+            """
+
+            webView.evaluateJavaScript(readerScript) { [weak self] result, error in
+                if let success = result as? Bool, !success {
+                    self?.isReaderMode = false
+                    let alert = UIAlertController(title: nil, message: "Could not extract article content", preferredStyle: .alert)
+                    alert.addAction(UIAlertAction(title: "OK", style: .default))
+                    self?.present(alert, animated: true)
+                }
+            }
+        } else {
+            webView.reload()
+        }
+    }
+
+    private func toggleNightMode() {
+        isNightMode.toggle()
+
+        let nightModeScript = """
+        (function() {
+            var existingFilter = document.getElementById('cleanfinding-night-mode');
+            if (existingFilter) {
+                existingFilter.remove();
+                return 'disabled';
+            }
+
+            var style = document.createElement('style');
+            style.id = 'cleanfinding-night-mode';
+            style.textContent = `
+                html {
+                    filter: sepia(30%) brightness(90%) !important;
+                    background-color: #1a1a1a !important;
+                }
+                body {
+                    background-color: #1a1a1a !important;
+                }
+            `;
+            document.head.appendChild(style);
+            return 'enabled';
+        })();
+        """
+
+        webView.evaluateJavaScript(nightModeScript, completionHandler: nil)
+    }
+
+    private func zoomIn() {
+        if currentZoom < 2.0 {
+            currentZoom += 0.25
+            applyZoom()
+        }
+    }
+
+    private func zoomOut() {
+        if currentZoom > 0.5 {
+            currentZoom -= 0.25
+            applyZoom()
+        }
+    }
+
+    private func applyZoom() {
+        let zoomScript = """
+        document.body.style.zoom = '\(currentZoom)';
+        document.body.style.webkitTextSizeAdjust = '\(Int(currentZoom * 100))%';
+        """
+        webView.evaluateJavaScript(zoomScript, completionHandler: nil)
+    }
+
+    private func translatePage() {
+        guard let currentURL = webView.url?.absoluteString,
+              let encodedURL = currentURL.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+            return
+        }
+
+        let translateURL = "https://translate.google.com/translate?sl=auto&tl=en&u=\(encodedURL)"
+        if let url = URL(string: translateURL) {
+            webView.load(URLRequest(url: url))
+        }
+    }
+
+    private func showFindInPage() {
+        let alert = UIAlertController(title: "Find in Page", message: nil, preferredStyle: .alert)
+        alert.addTextField { textField in
+            textField.placeholder = "Search text..."
+        }
+
+        alert.addAction(UIAlertAction(title: "Find", style: .default) { [weak self, weak alert] _ in
+            guard let query = alert?.textFields?.first?.text, !query.isEmpty else { return }
+            self?.performFind(query: query)
+        })
+
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        present(alert, animated: true)
+    }
+
+    private func performFind(query: String) {
+        let findScript = """
+        (function() {
+            if (window.find) {
+                window.find('\(query.replacingOccurrences(of: "'", with: "\\'"))');
+            }
+        })();
+        """
+        webView.evaluateJavaScript(findScript, completionHandler: nil)
     }
 
     // MARK: - KVO
@@ -394,5 +672,56 @@ extension BrowserViewController: WKUIDelegate {
             webView.load(navigationAction.request)
         }
         return nil
+    }
+}
+
+// MARK: - UIScrollViewDelegate (Chrome-like scrolling toolbar)
+
+extension BrowserViewController: UIScrollViewDelegate {
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        let currentScrollY = scrollView.contentOffset.y
+        let diff = currentScrollY - lastScrollY
+
+        // Only respond to significant scroll changes
+        if abs(diff) > scrollThreshold {
+            if diff > 0 && isToolbarVisible && currentScrollY > 50 {
+                // Scrolling DOWN - hide toolbar
+                hideToolbar()
+            } else if diff < 0 && !isToolbarVisible {
+                // Scrolling UP - show toolbar
+                showToolbar()
+            }
+        }
+
+        // Always show toolbar when at top of page
+        if currentScrollY <= 10 && !isToolbarVisible {
+            showToolbar()
+        }
+
+        lastScrollY = currentScrollY
+    }
+
+    private func hideToolbar() {
+        guard isToolbarVisible else { return }
+        isToolbarVisible = false
+
+        UIView.animate(withDuration: 0.2) {
+            // Hide URL bar (slide up)
+            self.view.subviews.first?.transform = CGAffineTransform(translationX: 0, y: -56)
+            // Hide toolbar (slide down)
+            self.toolbar.transform = CGAffineTransform(translationX: 0, y: 44)
+        }
+    }
+
+    private func showToolbar() {
+        guard !isToolbarVisible else { return }
+        isToolbarVisible = true
+
+        UIView.animate(withDuration: 0.2) {
+            // Show URL bar
+            self.view.subviews.first?.transform = .identity
+            // Show toolbar
+            self.toolbar.transform = .identity
+        }
     }
 }
