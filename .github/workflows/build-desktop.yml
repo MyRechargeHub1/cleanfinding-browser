@@ -37,7 +37,6 @@ jobs:
       - name: Build Windows
         run: npx electron-builder --win --publish never 2>&1 || true
         working-directory: ./desktop
-        working-directory: ./desktop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
