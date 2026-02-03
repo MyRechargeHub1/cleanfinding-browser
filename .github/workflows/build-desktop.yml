@@ -103,8 +103,23 @@ jobs:
           mkdir -p desktop/shared
           cp -r shared/privacy-handlers desktop/shared/
 
+      - name: Debug - List files
+        run: |
+          echo "=== Desktop directory contents ==="
+          ls -la
+          echo "=== Main.js first 5 lines ==="
+          head -5 main.js
+          echo "=== Shared folder ==="
+          ls -la shared/ || echo "No shared folder"
+          ls -la shared/privacy-handlers/ || echo "No privacy-handlers"
+        working-directory: ./desktop
+
       - name: Build Linux
-        run: npx electron-builder --linux --publish never
+        run: npx electron-builder --linux --publish never 2>&1 || true
+        working-directory: ./desktop
+
+      - name: Debug - Check dist
+        run: ls -la dist/ || echo "No dist folder"
         working-directory: ./desktop
 
       - name: Upload Linux artifacts
