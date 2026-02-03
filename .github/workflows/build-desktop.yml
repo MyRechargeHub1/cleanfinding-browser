@@ -35,11 +35,16 @@ jobs:
           Copy-Item -Recurse -Force "shared/privacy-handlers" "desktop/shared/"
 
       - name: Build Windows
-        run: npx electron-builder --win --publish never
+        run: npx electron-builder --win nsis --x64 --publish never
         working-directory: ./desktop
-        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: List Windows build output
+        run: dir dist /s
+        working-directory: ./desktop
+        shell: cmd
+        continue-on-error: true
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
@@ -71,7 +76,11 @@ jobs:
           cp -r shared/privacy-handlers desktop/shared/
 
       - name: Build macOS
-        run: npx electron-builder --mac --publish never
+        run: npx electron-builder --mac dmg --x64 --publish never
+        working-directory: ./desktop
+
+      - name: List macOS build output
+        run: ls -la dist/ || echo "No dist directory"
         working-directory: ./desktop
         continue-on-error: true
 
