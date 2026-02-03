@@ -65,5 +65,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>CleanFinding Browser uses speech recognition for voice search.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>CleanFinding Browser needs microphone access for voice search.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>CleanFinding Browser saves screenshots to your photo library.</string>
 </dict>
 </plist>
