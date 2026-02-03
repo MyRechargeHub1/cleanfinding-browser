@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('cleanfindingAPI', {
 
     // Privacy API
     clearBrowsingData: (options) => ipcRenderer.invoke('clear-browsing-data', options),
+    clearSiteData: (domain) => ipcRenderer.invoke('clear-site-data', domain),
     isYouTubeUrl: (url) => ipcRenderer.invoke('is-youtube-url', url),
     convertToPrivacyUrl: (url) => ipcRenderer.invoke('convert-to-privacy-url', url),
     getDuckPlayerPage: (videoId, timestamp) => ipcRenderer.invoke('get-duck-player-page', videoId, timestamp),
