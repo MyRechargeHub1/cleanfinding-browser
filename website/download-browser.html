@@ -430,7 +430,7 @@
         <div class="container">
             <h1>🛡️ CleanFinding Browser</h1>
             <p>Privacy-focused, family-safe browser with advanced tracker blocking and content protection</p>
-            <span class="version-badge">Latest Version: 1.4.0</span>
+            <span class="version-badge">Latest Version: 1.5.0</span>
         </div>
     </div>
 
@@ -447,57 +447,56 @@
                 <div class="download-card">
                     <div class="icon">🤖</div>
                     <h3>Android</h3>
-                    <div class="version">Version 1.4.0</div>
+                    <div class="version">Version 1.5.0</div>
                     <div class="size">~8 MB</div>
                     <div class="requirements">
                         Android 8.0 (Oreo) or later<br>
                         ARM, ARM64, x86, x86_64
                     </div>
-                    <a href="#" class="download-btn">Download APK</a>
-                    <a href="#" class="alternative-link">Get on Google Play →</a>
+                    <a href="https://github.com/MyRechargeHub1/cleanfinding-browser/releases/download/v1.5.0/CleanFinding-Browser-1.5.0.apk" class="download-btn">Download APK</a>
+                    <a href="https://github.com/MyRechargeHub1/cleanfinding-browser/releases" class="alternative-link">View all releases →</a>
                 </div>
 
                 <!-- Windows -->
                 <div class="download-card">
                     <div class="icon">🪟</div>
                     <h3>Windows</h3>
-                    <div class="version">Version 1.4.0</div>
-                    <div class="size">~73 MB</div>
+                    <div class="version">Version 1.5.0</div>
+                    <div class="size">~145 MB</div>
                     <div class="requirements">
                         Windows 10/11 (64-bit)<br>
                         Intel/AMD x64 processor
                     </div>
-                    <a href="#" class="download-btn">Download Installer</a>
-                    <a href="#" class="alternative-link">Download Portable →</a>
+                    <a href="https://github.com/MyRechargeHub1/cleanfinding-browser/releases/download/v1.5.0/CleanFinding-Browser-Setup-1.5.0.exe" class="download-btn">Download Installer</a>
+                    <a href="https://github.com/MyRechargeHub1/cleanfinding-browser/releases/download/v1.5.0/CleanFinding-Browser-1.5.0.exe" class="alternative-link">Download Portable →</a>
                 </div>
 
                 <!-- macOS -->
                 <div class="download-card">
                     <div class="icon">🍎</div>
                     <h3>macOS</h3>
-                    <div class="version">Version 1.4.0</div>
-                    <div class="size">~89 MB</div>
+                    <div class="version">Version 1.5.0</div>
+                    <div class="size">~100 MB</div>
                     <div class="requirements">
                         macOS 10.13 or later<br>
-                        Intel & Apple Silicon (M1/M2)
+                        Intel (x64) - extract and drag to Applications
                     </div>
-                    <a href="#" class="download-btn">Download DMG</a>
-                    <a href="#" class="alternative-link">Download ZIP →</a>
+                    <a href="https://github.com/MyRechargeHub1/cleanfinding-browser/releases/download/v1.5.0/CleanFinding-Browser-1.5.0-x64.zip" class="download-btn">Download ZIP</a>
+                    <a href="https://github.com/MyRechargeHub1/cleanfinding-browser/releases" class="alternative-link">View all releases →</a>
                 </div>
 
                 <!-- Linux -->
                 <div class="download-card">
                     <div class="icon">🐧</div>
                     <h3>Linux</h3>
-                    <div class="version">Version 1.4.0</div>
+                    <div class="version">Version 1.5.0</div>
                     <div class="size">~99 MB</div>
                     <div class="requirements">
                         Ubuntu 18.04+ / Debian / Fedora<br>
                         64-bit (x86_64)
                     </div>
-                    <a href="#" class="download-btn">Download AppImage</a>
-                    <a href="#" class="alternative-link">Download DEB →</a>
-                    <a href="#" class="alternative-link">Download RPM →</a>
+                    <a href="https://github.com/MyRechargeHub1/cleanfinding-browser/releases/download/v1.5.0/CleanFinding-Browser-1.5.0-x64.AppImage" class="download-btn">Download AppImage</a>
+                    <a href="https://github.com/MyRechargeHub1/cleanfinding-browser/releases" class="alternative-link">View all releases →</a>
                 </div>
             </div>
         </div>
@@ -771,6 +770,69 @@
     <div class="changelog-section">
         <div class="container">
             <h2>📋 Version History</h2>
+
+            <!-- Version 1.5.0 -->
+            <div class="changelog-item">
+                <h3>Version 1.5.0</h3>
+                <div class="date">Released: February 3, 2026</div>
+
+                <h4>🎉 Major New Features</h4>
+                <ul>
+                    <li><strong>Voice Search:</strong> Tap the microphone button and speak your search query across all platforms</li>
+                    <li><strong>Screenshot Capture:</strong> Take screenshots of web pages with built-in sharing</li>
+                    <li><strong>Picture-in-Picture (Android):</strong> Watch videos in a floating window while browsing</li>
+                    <li><strong>Reader Mode:</strong> Distraction-free reading with clutter removal</li>
+                    <li><strong>Night Mode:</strong> Blue light filter to reduce eye strain during evening browsing</li>
+                    <li><strong>Page Translation:</strong> Translate foreign language pages instantly</li>
+                    <li><strong>Find in Page:</strong> Search for text within the current page</li>
+                    <li><strong>Zoom Controls:</strong> Adjust page zoom from 50% to 200%</li>
+                </ul>
+
+                <h4>🔒 Security & Privacy Enhancements</h4>
+                <ul>
+                    <li>Fixed YouTube black screen by disabling DuckPlayer by default and excluding YouTube from ad blocking</li>
+                    <li>Fixed Pinterest/YouTube media rendering with proper content access and mixed content mode</li>
+                    <li>Chrome-like video rendering with hardware acceleration and DRM support</li>
+                    <li>Trusted domains whitelist prevents false-positive blocking of legitimate sites</li>
+                    <li>Enhanced WebView configuration for proper JavaScript and DOM storage</li>
+                </ul>
+
+                <h4>🐛 Bug Fixes</h4>
+                <ul>
+                    <li>Fixed Android search errors caused by disabled DOM storage in incognito mode</li>
+                    <li>Fixed desktop build issues: invalid icons, electron-builder config errors</li>
+                    <li>Fixed duplicate onBeforeRequest handler that disabled tracker blocking</li>
+                    <li>Fixed macOS build: proper RGBA icons and zip packaging instead of fragile DMG</li>
+                    <li>Fixed fullscreen video crashes with proper WebStorage cleanup</li>
+                    <li>Fixed toolbar scrolling behavior - now hides when scrolling down (Chrome-like)</li>
+                </ul>
+
+                <h4>⚡ Performance Improvements</h4>
+                <ul>
+                    <li>Scrolling toolbar reduces screen clutter and provides more viewing space</li>
+                    <li>Desktop mode auto-zoom fits content to screen width automatically</li>
+                    <li>Hardware-accelerated video playback for smooth YouTube experience</li>
+                    <li>Optimized icon generation with RGBA support for all platforms</li>
+                </ul>
+
+                <h4>🎨 UI/UX Improvements</h4>
+                <ul>
+                    <li>Added refresh button to navigation bar for quick page reloads</li>
+                    <li>Chrome-like scrolling toolbar that hides on scroll down, shows on scroll up</li>
+                    <li>Desktop browser now has all menu items: PiP, Reader Mode, Night Mode, Zoom, etc.</li>
+                    <li>Clear Site Data option to remove cookies/storage for current domain</li>
+                    <li>Page Info dialog shows SSL status and site security details</li>
+                    <li>Read Aloud (Text-to-Speech) for accessibility</li>
+                </ul>
+
+                <h4>🌐 Platform Support</h4>
+                <ul>
+                    <li><strong>Android:</strong> Version 1.5.0 (Android 8.0+)</li>
+                    <li><strong>Windows:</strong> Version 1.5.0 (Windows 10/11 64-bit)</li>
+                    <li><strong>macOS:</strong> Version 1.5.0 (macOS 10.13+, Intel x64)</li>
+                    <li><strong>Linux:</strong> Version 1.5.0 (Ubuntu 18.04+, AppImage)</li>
+                </ul>
+            </div>
 
             <!-- Version 1.4.0 -->
             <div class="changelog-item">
