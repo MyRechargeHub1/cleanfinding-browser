@@ -1,0 +1,77 @@
+name: Smart Monitor - Auto Detect & Report Issues
+
+on:
+  push:
+    branches: [main, master]
+  schedule:
+    - cron: '0 6 * * 1'  # Every Monday 6am UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create "smart-monitor" --color "0E8A16" --description "Auto-detected by Smart Monitor" --force 2>/dev/null || true
+          gh label create "bug" --color "d73a4a" --force 2>/dev/null || true
+          gh label create "enhancement" --color "a2eeef" --force 2>/dev/null || true
+          gh label create "security" --color "e4e669" --force 2>/dev/null || true
+          gh label create "performance" --color "f9d0c4" --force 2>/dev/null || true
+
+      - name: Run Smart Monitor
+        id: monitor
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_NAME: ${{ github.repository }}
+          REPO_TYPE: 'browser-extension'
+          DATASET_NAME: ''
+          SITE_URL: ''
+        run: |
+          chmod +x scripts/smart-monitor.sh
+          bash scripts/smart-monitor.sh 2>&1 | tee /tmp/monitor-output.txt
+
+      - name: Create or Update Issues
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ ! -f /tmp/monitor-issues.json ] || [ ! -s /tmp/monitor-issues.json ]; then
+            echo "No issues to create"
+            exit 0
+          fi
+
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            title=$(echo "$line" | python3 -c "import sys,json; print(json.loads(sys.stdin.read())['title'])" 2>/dev/null || continue)
+            body=$(echo "$line" | python3 -c "import sys,json; print(json.loads(sys.stdin.read())['body'])" 2>/dev/null || continue)
+
+            [ -z "$title" ] && continue
+
+            # Check if issue already exists
+            existing=$(gh issue list --search "\"$title\" in:title" --state open --json number --jq '.[0].number // empty' 2>/dev/null || true)
+
+            if [ -n "$existing" ]; then
+              gh issue comment "$existing" --body "**Smart Monitor Update** ($(date -u '+%Y-%m-%d %H:%M UTC'))
+
+          $body" 2>/dev/null || true
+            else
+              gh issue create \
+                --title "$title" \
+                --body "$body" \
+                --label "smart-monitor" 2>/dev/null || echo "Skipped: $title"
+            fi
+          done < /tmp/monitor-issues.json
+
+          echo "::notice::Smart Monitor scan complete. Check Issues tab."
