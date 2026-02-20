@@ -14,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -35,6 +36,7 @@ class HistoryActivity : AppCompatActivity() {
     private lateinit var clearAllButton: ImageButton
     private lateinit var backButton: ImageButton
     private lateinit var emptyStateLayout: LinearLayout
+    private var historyCollectionJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,7 +48,7 @@ class HistoryActivity : AppCompatActivity() {
         setupRecyclerView()
         setupSearch()
         setupButtons()
-        loadHistory()
+        observeHistory("")
     }
 
     private fun initViews() {
@@ -99,7 +101,7 @@ class HistoryActivity : AppCompatActivity() {
                 clearSearchButton.visibility = if (query.isNotEmpty()) View.VISIBLE else View.GONE
 
                 // Search history
-                searchHistory(query)
+                observeHistory(query)
             }
 
             override fun afterTextChanged(s: Editable?) {}
@@ -120,18 +122,16 @@ class HistoryActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadHistory() {
-        lifecycleScope.launch {
-            historyManager.getRecentHistory(500).collectLatest { historyList ->
-                historyAdapter.submitList(historyList)
-                updateEmptyState(historyList.isEmpty())
+    private fun observeHistory(query: String) {
+        historyCollectionJob?.cancel()
+        historyCollectionJob = lifecycleScope.launch {
+            val historyFlow = if (query.isBlank()) {
+                historyManager.getRecentHistory(500)
+            } else {
+                historyManager.searchHistory(query)
             }
-        }
-    }
 
-    private fun searchHistory(query: String) {
-        lifecycleScope.launch {
-            historyManager.searchHistory(query).collectLatest { historyList ->
+            historyFlow.collectLatest { historyList ->
                 historyAdapter.submitList(historyList)
                 updateEmptyState(historyList.isEmpty(), query)
             }
@@ -210,6 +210,12 @@ class HistoryActivity : AppCompatActivity() {
                 }
             }
         )
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        historyCollectionJob?.cancel()
+        historyManager.cleanup()
     }
 
     private fun showDeleteConfirmDialog(title: String, message: String, onConfirm: () -> Unit) {

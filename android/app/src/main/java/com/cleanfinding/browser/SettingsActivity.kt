@@ -108,14 +108,14 @@ class SettingsActivity : AppCompatActivity() {
 
             // Clear history
             val historyManager = HistoryManager(context)
-            historyManager.clearAllHistory { count ->
-                // History cleared
+            historyManager.clearAllHistory {
+                historyManager.cleanup()
             }
 
             // Clear downloads
             val downloadManager = DownloadManagerHelper(context)
-            downloadManager.clearAllDownloads { count ->
-                // Downloads cleared
+            downloadManager.clearAllDownloads {
+                downloadManager.cleanup()
             }
 
             // Clear cookies
