@@ -241,6 +241,12 @@ function setupMenu() {
 function setupPrivacyFeatures() {
     const ses = session.defaultSession;
 
+    // Reset request handlers before re-registering.
+    // This function is called again when privacy settings change.
+    ses.webRequest.onBeforeRequest(null);
+    ses.webRequest.onCompleted(null);
+    ses.webRequest.onBeforeSendHeaders(null);
+
     // Enable Do Not Track
     ses.setUserAgent(ses.getUserAgent() + ' DNT/1');
 
@@ -279,7 +285,12 @@ function setupPrivacyFeatures() {
     ses.webRequest.onCompleted(
         { urls: ['*://youtube.com/*', '*://www.youtube.com/*', '*://youtube-nocookie.com/*'] },
         (details) => {
-            if (store.get('privacy.duckPlayer')) {
+            if (
+                store.get('privacy.duckPlayer') &&
+                details.resourceType === 'mainFrame' &&
+                mainWindow &&
+                !mainWindow.isDestroyed()
+            ) {
                 mainWindow.webContents.executeJavaScript(duckPlayerHandler.getInjectionScript())
                     .catch(err => console.error('Failed to inject Duck Player script:', err));
             }
