@@ -227,6 +227,51 @@ class DownloadManagerHelper(private val context: Context) : Closeable {
     }
 
     /**
+     * Retry a failed/cancelled download
+     * @param download Download entry to retry
+     * @param onComplete Callback with success state and optional error message
+     */
+    fun retryDownload(
+        download: Download,
+        onComplete: ((Boolean, String?) -> Unit)? = null
+    ) {
+        scope.launch {
+            try {
+                if (!download.canRetry()) {
+                    withContext(Dispatchers.Main) {
+                        onComplete?.invoke(false, "Only failed or cancelled downloads can be retried")
+                    }
+                    return@launch
+                }
+
+                if (download.url.isBlank()) {
+                    withContext(Dispatchers.Main) {
+                        onComplete?.invoke(false, "Invalid download URL")
+                    }
+                    return@launch
+                }
+
+                // Start a fresh download first to avoid losing the existing record if enqueue fails.
+                startDownload(download.url, download.filename, download.mimeType)
+
+                // Remove stale system job and old database row after retry was successfully enqueued.
+                if (download.downloadId > 0) {
+                    downloadManager.remove(download.downloadId)
+                }
+                downloadDao.deleteDownload(download.id)
+
+                withContext(Dispatchers.Main) {
+                    onComplete?.invoke(true, null)
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    onComplete?.invoke(false, e.message ?: "Failed to retry download")
+                }
+            }
+        }
+    }
+
+    /**
      * Delete a download record (and file if exists)
      * @param download Download to delete
      * @param deleteFile Whether to delete the actual file
