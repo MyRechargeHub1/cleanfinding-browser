@@ -75,14 +75,14 @@ class DownloadsActivity : AppCompatActivity() {
                 Toast.makeText(this, "Download cancelled", Toast.LENGTH_SHORT).show()
             },
             onRetryClick = { download ->
-                // Retry download
-                Toast.makeText(
-                    this,
-                    "Retry not implemented yet. Please download again.",
-                    Toast.LENGTH_SHORT
-                ).show()
-                // TODO: Implement retry logic
-                // downloadManager.startDownload(download.url, download.filename, download.mimeType)
+                downloadManager.retryDownload(download) { success, errorMessage ->
+                    val message = if (success) {
+                        "Download restarted"
+                    } else {
+                        "Retry failed${errorMessage?.let { ": $it" } ?: ""}"
+                    }
+                    Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+                }
             }
         )
 
