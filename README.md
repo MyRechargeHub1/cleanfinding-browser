@@ -59,7 +59,9 @@ cd android
 - Apple Developer Account
 
 ### Build
-Open `ios/CleanFindingBrowser.xcodeproj` in Xcode and build.
+Open `ios/CleanFindingBrowser/CleanFindingBrowser.xcodeproj` in Xcode and build.
+
+For full setup, signing, simulator, and archive steps, see [ios/README.md](ios/README.md).
 
 ## Download
 
