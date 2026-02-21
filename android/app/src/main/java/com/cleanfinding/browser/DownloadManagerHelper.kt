@@ -24,12 +24,14 @@ import java.io.Closeable
  *
  * IMPORTANT: Call cleanup() or close() when done to prevent memory leaks
  */
-class DownloadManagerHelper(private val context: Context) : Closeable {
+class DownloadManagerHelper(context: Context) : Closeable {
 
-    private val database = BrowserDatabase.getDatabase(context)
+    private val appContext = context.applicationContext
+
+    private val database = BrowserDatabase.getDatabase(appContext)
     private val downloadDao = database.downloadDao()
     private val scope = CoroutineScope(Dispatchers.IO)
-    private val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+    private val downloadManager = appContext.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
 
     /**
      * BroadcastReceiver to listen for download completion
@@ -47,7 +49,7 @@ class DownloadManagerHelper(private val context: Context) : Closeable {
         // Register broadcast receiver for download completion
         val filter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
         ContextCompat.registerReceiver(
-            context,
+            appContext,
             downloadReceiver,
             filter,
             ContextCompat.RECEIVER_NOT_EXPORTED
@@ -71,18 +73,7 @@ class DownloadManagerHelper(private val context: Context) : Closeable {
         contentDisposition: String? = null
     ): Long {
         val fileName = filename ?: URLUtil.guessFileName(url, contentDisposition, mimeType)
-
-        val request = DownloadManager.Request(Uri.parse(url)).apply {
-            setTitle(fileName)
-            setDescription("Downloading...")
-            setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
-            setAllowedOverMetered(true)
-            setAllowedOverRoaming(true)
-
-            userAgent?.let { addRequestHeader("User-Agent", it) }
-        }
-
+        val request = buildDownloadRequest(url, fileName, mimeType, userAgent)
         val downloadId = downloadManager.enqueue(request)
 
         // Save to database
@@ -101,6 +92,25 @@ class DownloadManagerHelper(private val context: Context) : Closeable {
         return downloadId
     }
 
+    private fun buildDownloadRequest(
+        url: String,
+        filename: String,
+        mimeType: String? = null,
+        userAgent: String? = null
+    ): DownloadManager.Request {
+        return DownloadManager.Request(Uri.parse(url)).apply {
+            setTitle(filename)
+            setDescription("Downloading...")
+            setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename)
+            setAllowedOverMetered(true)
+            setAllowedOverRoaming(true)
+
+            userAgent?.let { addRequestHeader("User-Agent", it) }
+            mimeType?.let { setMimeType(it) }
+        }
+    }
+
     /**
      * Update download status from DownloadManager
      * @param downloadId Android DownloadManager ID
@@ -113,7 +123,6 @@ class DownloadManagerHelper(private val context: Context) : Closeable {
             cursor?.use {
                 if (it.moveToFirst()) {
                     val statusIndex = it.getColumnIndex(DownloadManager.COLUMN_STATUS)
-                    val reasonIndex = it.getColumnIndex(DownloadManager.COLUMN_REASON)
                     val uriIndex = it.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI)
                     val bytesDownloadedIndex = it.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
                     val totalBytesIndex = it.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
@@ -252,7 +261,23 @@ class DownloadManagerHelper(private val context: Context) : Closeable {
                 }
 
                 // Start a fresh download first to avoid losing the existing record if enqueue fails.
-                startDownload(download.url, download.filename, download.mimeType)
+                val retriedDownloadId = downloadManager.enqueue(
+                    buildDownloadRequest(
+                        url = download.url,
+                        filename = download.filename,
+                        mimeType = download.mimeType
+                    )
+                )
+                downloadDao.insertDownload(
+                    Download(
+                        downloadId = retriedDownloadId,
+                        url = download.url,
+                        filename = download.filename,
+                        mimeType = download.mimeType,
+                        downloadTime = System.currentTimeMillis(),
+                        status = DownloadStatus.PENDING
+                    )
+                )
 
                 // Remove stale system job and old database row after retry was successfully enqueued.
                 if (download.downloadId > 0) {
@@ -287,7 +312,7 @@ class DownloadManagerHelper(private val context: Context) : Closeable {
             if (deleteFile && download.filePath != null) {
                 try {
                     val uri = Uri.parse(download.filePath)
-                    context.contentResolver.delete(uri, null, null)
+                    appContext.contentResolver.delete(uri, null, null)
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
@@ -341,7 +366,7 @@ class DownloadManagerHelper(private val context: Context) : Closeable {
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            context.startActivity(intent)
+            appContext.startActivity(intent)
             true
         } catch (e: Exception) {
             e.printStackTrace()
@@ -366,7 +391,7 @@ class DownloadManagerHelper(private val context: Context) : Closeable {
                 putExtra(Intent.EXTRA_STREAM, uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            context.startActivity(Intent.createChooser(intent, "Share file"))
+            appContext.startActivity(Intent.createChooser(intent, "Share file"))
             true
         } catch (e: Exception) {
             e.printStackTrace()
@@ -405,7 +430,7 @@ class DownloadManagerHelper(private val context: Context) : Closeable {
      */
     fun cleanup() {
         try {
-            context.unregisterReceiver(downloadReceiver)
+            appContext.unregisterReceiver(downloadReceiver)
         } catch (e: Exception) {
             // Receiver might not be registered
         }
